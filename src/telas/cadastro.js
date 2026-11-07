@@ -1,7 +1,8 @@
+import { router } from 'expo-router';
 import AuthLayout from '../components/AuthLayout';
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
-import { storage } from '../storage/storage'; // Importando o MMKV
+import { storage } from '../storage/storage';
 
 // Função utilitária para os alertas funcionarem tanto no celular quanto no navegador
 const mostrarAlerta = (titulo, mensagem) => {
@@ -12,12 +13,12 @@ const mostrarAlerta = (titulo, mensagem) => {
   Alert.alert(titulo, mensagem);
 };
 
-export default function Cadastro({ navigation }) {
+export default function Cadastro() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
 
-  const handleCadastro = () => {
+  const handleCadastro = async () => {
     if (!nome || !email || !senha) {
       mostrarAlerta('Erro', 'Por favor, preencha todos os campos.');
       return;
@@ -29,9 +30,12 @@ export default function Cadastro({ navigation }) {
       senha: senha
     };
 
-    // Salvando os dados no MMKV
-    // Note que não usamos 'await' pois o MMKV é síncrono
-    storage.set('usuario', JSON.stringify(dadosUsuario));
+    try {
+      await storage.set('usuario', JSON.stringify(dadosUsuario));
+    } catch {
+      mostrarAlerta('Erro', 'Não foi possível salvar o cadastro. Tente novamente.');
+      return;
+    }
 
     mostrarAlerta('Sucesso', 'Conta criada com sucesso!');
     
@@ -41,7 +45,7 @@ export default function Cadastro({ navigation }) {
     setSenha('');
     
     // Redireciona para a tela de Login
-    navigation.navigate('Login');
+    router.replace('/');
   };
 
   return (
@@ -80,7 +84,7 @@ export default function Cadastro({ navigation }) {
           <Text style={styles.textoBotao}>Cadastrar</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.linkContainer}>
+        <TouchableOpacity onPress={() => router.replace('/')} style={styles.linkContainer}>
           <Text style={styles.textoLink}>Já tem uma conta? <Text style={styles.textoLinkBold}>Faça Login</Text></Text>
         </TouchableOpacity>
       </View>

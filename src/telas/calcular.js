@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
 import React, { useState, useEffect, useRef } from 'react';
@@ -21,7 +22,7 @@ const OPCOES_MATERIAIS = {
   pintura: { nome: "Pintura", tipos: ["Tinta Acrílica", "Tinta Látex", "Tinta Epóxi", "Selador"] },
 };
 
-export default function Calcular({ navigation }) {
+export default function Calcular() {
   const insets = useSafeAreaInsets();
   const { compact } = useResponsiveLayout();
   const [superficie, setSuperficie] = useState("");
@@ -145,7 +146,7 @@ export default function Calcular({ navigation }) {
       setPrecoUnitario("");
       setComprimentoPiso("");
       setLarguraPiso("");
-      navigation.navigate('ProjetosTab'); // Volta pra aba de projetos
+      router.navigate('/projetos'); // Volta pra aba de projetos
 
     } catch (_e) {
       Alert.alert("Erro", "Não foi possível salvar no projeto.");

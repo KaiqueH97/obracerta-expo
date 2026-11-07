@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -13,7 +14,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function Projetos({ navigation }) {
+export default function Projetos() {
   const insets = useSafeAreaInsets();
   const [projetos, setProjetos] = useState([]);
   const [novoProjeto, setNovoProjeto] = useState("");
@@ -222,7 +223,7 @@ export default function Projetos({ navigation }) {
                     {/* NAVEGAÇÃO PARA DETALHES (O antigo [id]) */}
                     <TouchableOpacity 
                       style={styles.btnOpen}
-                      onPress={() => navigation.navigate('ProjetoDetalhes', { id: projeto.id, titulo: projeto.titulo })}
+                      onPress={() => router.push({ pathname: '/projeto-detalhes', params: { id: projeto.id, titulo: projeto.titulo } })}
                     >
                       <Text style={styles.btnOpenText}>Abrir</Text>
                       <MaterialCommunityIcons name="arrow-right" size={18} color="#ea580c" />

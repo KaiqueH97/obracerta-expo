@@ -1,4 +1,6 @@
-import { MMKV } from 'react-native-mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Instância única do MMKV (use um id com o nome do seu projeto)
-export const storage = new MMKV({ id: 'obracerta-storage' });
+// Armazenamento local disponível no Expo Go. As operações retornam Promises.
+export const storage = {
+  set: (key, value) => AsyncStorage.setItem(key, String(value)),
+};

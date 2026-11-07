@@ -10,6 +10,11 @@
     "target": "esnext",
     "skipLibCheck": true
   },
-  "include": ["App.js", "index.js", "src/**/*.js"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

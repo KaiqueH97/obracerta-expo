@@ -1,7 +1,8 @@
+import { router } from 'expo-router';
 import AuthLayout from '../components/AuthLayout';
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Alert } from "react-native";
-import { storage } from '../storage/storage'; // Importando a instância do MMKV
+import { storage } from '../storage/storage';
 
 // Função utilitária para os alertas funcionarem tanto no celular quanto no navegador
 const mostrarAlerta = (titulo, mensagem) => {
@@ -12,35 +13,25 @@ const mostrarAlerta = (titulo, mensagem) => {
   Alert.alert(titulo, mensagem);
 };
 
-export default function Login({ navigation }) {
+export default function Login() {
   const [email, setEmail] = useState("user@obracerta.com");
   const [senha, setSenha] = useState("obra123");
   const [carregando, setCarregando] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    if (carregando) return;
     if (!email.trim() || !senha) {
-      mostrarAlerta("Atenção", "Por favor, preencha e-mail e senha.");
+      mostrarAlerta('Atenção', 'Por favor, preencha e-mail e senha.');
       return;
     }
-
     setCarregando(true);
-
     try {
-      // Mantemos o setTimeout para simular o tempo de carregamento visual
-      setTimeout(() => {
-        
-        // DEPOIS (MMKV): Código síncrono, sem async/await
-        storage.set('@usuario_email', email.trim());
-        
-        setCarregando(false);
-        
-        // Pula para a tela Home (limpando o histórico para não voltar pro login)
-        navigation.replace('Home');
-      }, 1500); 
-      
-    } catch (_error) {
+      await storage.set('@usuario_email', email.trim());
+      router.replace('/home');
+    } catch {
+      mostrarAlerta('Erro', 'Não foi possível realizar o login.');
+    } finally {
       setCarregando(false);
-      mostrarAlerta("Erro", "Não foi possível realizar o login.");
     }
   };
 
@@ -95,7 +86,7 @@ export default function Login({ navigation }) {
             <View style={styles.registerContainer}>
               <Text style={styles.textGray}>Não tem uma conta? </Text>
               {/* Agora navega de verdade para a tela de Cadastro */}
-              <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
+              <TouchableOpacity onPress={() => router.push('/cadastro')}>
                 <Text style={styles.linkRegister}>Cadastre-se aqui</Text>
               </TouchableOpacity>
             </View>

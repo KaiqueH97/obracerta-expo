@@ -1,3 +1,4 @@
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
 import React, { useState, useEffect } from 'react';
@@ -15,11 +16,11 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function ProjetoDetalhes({ route, navigation }) {
+export default function ProjetoDetalhes() {
   const insets = useSafeAreaInsets();
   const { compact } = useResponsiveLayout();
   // Pega o ID e o Título passados pela tela de Projetos
-  const { id, titulo } = route.params;
+  const { id, titulo } = useLocalSearchParams();
 
   const [abaAtiva, setAbaAtiva] = useState('materiais'); // materiais | caixa | tarefas
   const [carregando, setCarregando] = useState(true);
@@ -167,7 +168,7 @@ export default function ProjetoDetalhes({ route, navigation }) {
 
       {/* HEADER DA OBRA */}
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <TouchableOpacity style={styles.btnVoltar} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.btnVoltar} onPress={() => router.back()}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#18181b" />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>

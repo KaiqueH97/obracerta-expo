@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
 import React from 'react';
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function Home({ navigation }) {
+export default function Home() {
   const insets = useSafeAreaInsets();
   const { compact, wide, desktop } = useResponsiveLayout();
   // Dados fixos apenas para visualização do Front-end (Mock)
@@ -57,7 +58,7 @@ export default function Home({ navigation }) {
         <View style={[styles.quickAccess, wide && { flexDirection: 'row' }]}>
           <TouchableOpacity 
             style={[styles.btnAction, wide && { flex: 1 }, { backgroundColor: '#ea580c' }]}
-            onPress={() => navigation.navigate('CalcularTab')}
+            onPress={() => router.navigate('/calcular')}
           >
             {/* Ícone de Calculadora adicionado aqui */}
             <MaterialCommunityIcons name="calculator" size={24} color="#fff" />
@@ -66,7 +67,7 @@ export default function Home({ navigation }) {
 
           <TouchableOpacity 
             style={[styles.btnAction, wide && { flex: 1 }, { backgroundColor: '#27272a' }]}
-            onPress={() => navigation.navigate('ProjetosTab')}
+            onPress={() => router.navigate('/projetos')}
           >
             <MaterialCommunityIcons name="folder-account" size={24} color="#fff" />
             <Text style={styles.btnText}>Meus Projetos</Text>
@@ -112,7 +113,7 @@ export default function Home({ navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Projetos Recentes</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Projetos')}>
+            <TouchableOpacity onPress={() => router.navigate('/projetos')}>
               <Text style={styles.linkText}>Ver todos</Text>
             </TouchableOpacity>
           </View>
