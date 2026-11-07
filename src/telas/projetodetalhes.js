@@ -1,7 +1,7 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+const formatarMoeda = valor => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+
 export default function ProjetoDetalhes() {
   const insets = useSafeAreaInsets();
   const { compact } = useResponsiveLayout();
@@ -24,6 +26,9 @@ export default function ProjetoDetalhes() {
 
   const [abaAtiva, setAbaAtiva] = useState('materiais'); // materiais | caixa | tarefas
   const [carregando, setCarregando] = useState(true);
+  const [erroCarga, setErroCarga] = useState(false);
+  const [adicaoManual, setAdicaoManual] = useState(false);
+  const leitura = useRef(0);
 
   // Estados dos Dados
   const [materiais, setMateriais] = useState([]);
@@ -45,44 +50,60 @@ export default function ProjetoDetalhes() {
   const keyTarefas = `@tarefas_${id}`;
   const keyCaixa = `@caixa_${id}`;
 
-  useEffect(() => {
-    const carregarDadosDaObra = async () => {
-      try {
-        const [dadosMat, dadosTar, dadosCai] = await Promise.all([
-          AsyncStorage.getItem(keyMateriais),
-          AsyncStorage.getItem(keyTarefas),
-          AsyncStorage.getItem(keyCaixa)
-        ]);
-
-        if (dadosMat) setMateriais(JSON.parse(dadosMat));
-        if (dadosTar) setTarefas(JSON.parse(dadosTar));
-        if (dadosCai) setTransacoes(JSON.parse(dadosCai));
-      } catch (_e) {
-        Alert.alert('Erro', 'Não foi possível carregar os dados desta obra.');
-      } finally {
-        setCarregando(false);
-      }
-    };
-    carregarDadosDaObra();
+  const carregarDadosDaObra = useCallback(() => {
+    const versao = ++leitura.current;
+    setCarregando(true);
+    setErroCarga(false);
+    Promise.all([
+      AsyncStorage.getItem(keyMateriais),
+      AsyncStorage.getItem(keyTarefas),
+      AsyncStorage.getItem(keyCaixa),
+    ]).then(dados => {
+      if (versao !== leitura.current) return;
+      const listas = dados.map(json => json ? JSON.parse(json) : []);
+      if (listas.some(lista => !Array.isArray(lista))) throw new Error('Dados inválidos');
+      setMateriais(listas[0]);
+      setTarefas(listas[1]);
+      setTransacoes(listas[2]);
+      setCarregando(false);
+    }).catch(() => {
+      if (versao === leitura.current) { setErroCarga(true); setCarregando(false); }
+    });
   }, [keyMateriais, keyTarefas, keyCaixa]);
+
+  useFocusEffect(useCallback(() => {
+    carregarDadosDaObra();
+    return () => { leitura.current++; };
+  }, [carregarDadosDaObra]));
 
   /* ================== MATERIAIS ================== */
   const adicionarMaterial = async () => {
-    if (!nomeMaterial || !qtdMaterial || !custoMaterial) {
+    if (!nomeMaterial.trim() || !qtdMaterial.trim() || !custoMaterial.trim()) {
       Alert.alert('Aviso', 'Preencha todos os campos do material.');
+      return;
+    }
+
+    const custo = Number(custoMaterial.trim().replace(',', '.'));
+    if (!nomeMaterial.trim() || !qtdMaterial.trim() || !Number.isFinite(custo) || custo < 0) {
+      Alert.alert('Aviso', 'Informe nome, quantidade e um custo válido, como 150,00.');
       return;
     }
 
     const novoItem = {
       id: Date.now().toString(),
-      nome: nomeMaterial,
-      quantidade: qtdMaterial,
-      preco_total: parseFloat(custoMaterial.replace(',', '.'))
+      nome: nomeMaterial.trim(),
+      quantidade: qtdMaterial.trim(),
+      preco_total: custo
     };
 
     const novaLista = [novoItem, ...materiais];
-    setMateriais(novaLista);
-    await AsyncStorage.setItem(keyMateriais, JSON.stringify(novaLista));
+    try {
+      await AsyncStorage.setItem(keyMateriais, JSON.stringify(novaLista));
+      setMateriais(novaLista);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar os materiais. Tente novamente.');
+      return;
+    }
 
     setNomeMaterial('');
     setQtdMaterial('');
@@ -91,8 +112,13 @@ export default function ProjetoDetalhes() {
 
   const excluirMaterial = async (idMaterial) => {
     const novaLista = materiais.filter(m => m.id !== idMaterial);
-    setMateriais(novaLista);
-    await AsyncStorage.setItem(keyMateriais, JSON.stringify(novaLista));
+    try {
+      await AsyncStorage.setItem(keyMateriais, JSON.stringify(novaLista));
+      setMateriais(novaLista);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar os materiais. Tente novamente.');
+      return;
+    }
   };
 
   /* ================== TAREFAS ================== */
@@ -163,8 +189,18 @@ export default function ProjetoDetalhes() {
     );
   }
 
+  if (erroCarga) return <View style={styles.center}>
+    <Text style={styles.itemTitle}>Não foi possível carregar esta obra.</Text>
+    <TouchableOpacity accessibilityRole="button" style={styles.btnNovaMedicao} onPress={carregarDadosDaObra}>
+      <Text style={styles.btnNovaMedicaoText}>Tentar novamente</Text>
+    </TouchableOpacity>
+    <TouchableOpacity accessibilityRole="button" style={styles.manualButton} onPress={() => router.navigate('/projetos')}>
+      <Text style={styles.manualText}>Voltar aos projetos</Text>
+    </TouchableOpacity>
+  </View>;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView style={styles.container} contentContainerStyle={{ width: '100%', maxWidth: 1100, alignSelf: 'center', paddingBottom: Math.max(insets.bottom, 16) }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
 
       {/* HEADER DA OBRA */}
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
@@ -223,34 +259,65 @@ export default function ProjetoDetalhes() {
         {/* ================= CONTEÚDO: MATERIAIS ================= */}
         {abaAtiva === 'materiais' && (
           <View style={styles.sectionCard}>
-            <View style={[styles.formRow, compact && { flexDirection: 'column' }]}>
-              <TextInput style={[styles.input, {flex: 2}]} placeholder="Material (Ex: Cimento)" value={nomeMaterial} onChangeText={setNomeMaterial} />
-              <TextInput style={[styles.input, {flex: 1}]} placeholder="Qtd" value={qtdMaterial} onChangeText={setQtdMaterial} />
+            <View style={styles.materialHeading}>
+              <MaterialCommunityIcons name="cart-outline" size={24} color="#ea580c" />
+              <Text accessibilityRole="header" style={styles.materialTitle}>Lista de Materiais</Text>
+              <Text style={styles.materialCount}>{materiais.length} {materiais.length === 1 ? 'material' : 'materiais'}</Text>
             </View>
-            <View style={[styles.formRow, compact && { flexDirection: 'column' }]}>
-              <TextInput style={[styles.input, {flex: 1}]} placeholder="Custo Total (Ex: 150.00)" keyboardType="numeric" value={custoMaterial} onChangeText={setCustoMaterial} />
-              <TouchableOpacity style={styles.btnAddMaterial} onPress={adicionarMaterial}>
-                <Text style={styles.btnAddText}>Adicionar</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.divisor} />
 
             {materiais.length === 0 ? (
-              <Text style={styles.emptyText}>Nenhum material registrado.</Text>
+              <View style={styles.materialEmpty}>
+                <MaterialCommunityIcons name="cart-outline" size={40} color="#a1a1aa" />
+                <Text style={styles.itemTitle}>Nenhum material adicionado.</Text>
+                <Text style={styles.materialHelp}>Use Nova Medição para calcular e adicionar materiais a esta obra.</Text>
+              </View>
             ) : (
               materiais.map(item => (
-                <View key={item.id} style={styles.listItem}>
-                  <View style={{flex: 1}}>
-                    <Text style={styles.itemTitle}>{item.nome}</Text>
-                    <Text style={styles.itemSub}>Qtd: {item.quantidade} • R$ {item.preco_total.toFixed(2)}</Text>
+                <View key={item.id} style={styles.materialItem}>
+                  <View style={styles.materialRow}>
+                    <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
+                      <Text style={styles.itemTitle}>{item.nome}</Text>
+                      <View style={styles.quantityBadge}><Text style={styles.quantityText}>{item.quantidade}</Text></View>
+                    </View>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Excluir ${item.nome}`} style={styles.materialDelete} onPress={() => excluirMaterial(item.id)}>
+                      <MaterialCommunityIcons name="trash-can-outline" size={24} color="#ef4444" />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={() => excluirMaterial(item.id)}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={24} color="#ef4444" />
-                  </TouchableOpacity>
+                  <View style={styles.materialCost}>
+                    <Text style={styles.materialHelp}>Custo registrado</Text>
+                    <Text style={styles.materialPrice}>{formatarMoeda(item.preco_total)}</Text>
+                  </View>
                 </View>
               ))
             )}
+
+            <View style={styles.materialTotal}>
+              <Text style={styles.itemTitle}>Total dos materiais</Text>
+              <Text style={styles.materialPrice}>{formatarMoeda(custoTotalMateriais)}</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" style={styles.btnNovaMedicao}
+              onPress={() => router.push({ pathname: '/nova-medicao', params: { projetoId: String(id) } })}>
+              <MaterialCommunityIcons name="calculator" size={24} color="#9a3412" />
+              <Text style={styles.btnNovaMedicaoText}>Nova Medição</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: adicaoManual }} style={styles.manualButton} onPress={() => setAdicaoManual(valor => !valor)}>
+              <Text style={styles.manualText}>{adicaoManual ? 'Fechar cadastro manual' : 'Adicionar material manualmente'}</Text>
+            </TouchableOpacity>
+            {adicaoManual && <View>
+              <View style={[styles.formRow, compact && { flexDirection: 'column' }]}>
+                <TextInput style={[styles.input, {flex: 2}]} placeholder="Material (Ex: Cimento)" value={nomeMaterial} onChangeText={setNomeMaterial} />
+                <TextInput style={[styles.input, {flex: 1}]} placeholder="Qtd" value={qtdMaterial} onChangeText={setQtdMaterial} />
+              </View>
+              <View style={[styles.formRow, compact && { flexDirection: 'column' }]}>
+                <TextInput style={[styles.input, {flex: 1}]} placeholder="Custo Total (Ex: 150.00)" keyboardType="numeric" value={custoMaterial} onChangeText={setCustoMaterial} />
+                <TouchableOpacity style={styles.btnAddMaterial} onPress={adicionarMaterial}>
+                  <Text style={styles.btnAddText}>Adicionar</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.divisor} />
+
+            </View>}
 
             {materiais.length > 0 && (
               <TouchableOpacity style={styles.btnWhatsApp} onPress={solicitarOrcamentoWhatsApp}>
@@ -358,6 +425,23 @@ export default function ProjetoDetalhes() {
 }
 
 const styles = StyleSheet.create({
+  materialHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingBottom: 16, borderBottomWidth: 1, borderColor: '#e4e4e7' },
+  materialTitle: { fontSize: 20, fontWeight: 'bold', color: '#18181b', flexShrink: 1 },
+  materialCount: { color: '#71717a', fontSize: 14 },
+  materialEmpty: { alignItems: 'center', paddingVertical: 24, gap: 12 },
+  materialHelp: { fontSize: 14, color: '#52525b', flexShrink: 1 },
+  materialItem: { paddingVertical: 16, gap: 12, borderBottomWidth: 1, borderColor: '#e4e4e7' },
+  materialRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  materialDelete: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+  quantityBadge: { alignSelf: 'flex-start', backgroundColor: '#ffedd5', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  quantityText: { color: '#9a3412', fontWeight: 'bold', fontSize: 13 },
+  materialCost: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', backgroundColor: '#fafafa', padding: 12, borderRadius: 10 },
+  materialPrice: { color: '#047857', fontWeight: 'bold', fontSize: 18, flexShrink: 1 },
+  materialTotal: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', paddingVertical: 20 },
+  btnNovaMedicao: { minHeight: 48, backgroundColor: '#ffedd5', borderRadius: 12, padding: 16, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
+  btnNovaMedicaoText: { color: '#9a3412', fontWeight: 'bold', fontSize: 16, flexShrink: 1, textAlign: 'center' },
+  manualButton: { minHeight: 48, padding: 12, justifyContent: 'center', alignItems: 'center' },
+  manualText: { color: '#52525b', fontWeight: 'bold', textAlign: 'center' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   container: { flex: 1, backgroundColor: '#f4f4f5' },
 

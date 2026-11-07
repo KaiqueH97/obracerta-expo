@@ -1,7 +1,7 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -24,6 +24,10 @@ const OPCOES_MATERIAIS = {
 
 export default function Calcular() {
   const insets = useSafeAreaInsets();
+  const { projetoId } = useLocalSearchParams();
+  const idOrigem = typeof projetoId === 'string' ? projetoId : '';
+  const [salvando, setSalvando] = useState(false);
+  const envio = useRef(false);
   const { compact } = useResponsiveLayout();
   const [superficie, setSuperficie] = useState("");
   const [material, setMaterial] = useState("");
@@ -38,18 +42,21 @@ export default function Calcular() {
   
   const proximaMedidaId = useRef(2);
 
-  // Carrega os projetos salvos no celular para popular o Picker final
-  useEffect(() => {
-    const carregarProjetos = async () => {
-      try {
-        const dados = await AsyncStorage.getItem('@meus_projetos');
-        if (dados) setProjetos(JSON.parse(dados));
-      } catch (e) {
-        console.error("Erro ao carregar projetos", e);
-      }
-    };
-    carregarProjetos();
-  }, []);
+  // Atualiza o seletor ao voltar à calculadora e seleciona a obra de origem.
+  useFocusEffect(useCallback(() => {
+    let ativo = true;
+    AsyncStorage.getItem('@meus_projetos').then(dados => {
+      if (!ativo) return;
+      const lista = dados ? JSON.parse(dados) : [];
+      if (!Array.isArray(lista)) throw new Error('Lista de projetos inválida');
+      setProjetos(lista);
+      setProjetoSelecionado(anterior => lista.some(item => item.id === idOrigem)
+        ? idOrigem : lista.some(item => item.id === anterior) ? anterior : '');
+    }).catch(() => {
+      if (ativo) { setProjetos([]); setProjetoSelecionado(''); }
+    });
+    return () => { ativo = false; };
+  }, [idOrigem]));
 
   /* ================= LÓGICAS DA CALCULADORA ================= */
   const adicionarMedida = () => {
@@ -114,12 +121,22 @@ export default function Calcular() {
 
   /* ================= SALVAR NA OBRA ================= */
   const salvarNoProjeto = async () => {
+    if (envio.current) return;
     if (!projetoSelecionado || !resultado) {
       Alert.alert("Aviso", "Selecione um projeto para salvar.");
       return;
     }
 
+    envio.current = true;
+    setSalvando(true);
     try {
+      const obrasSalvas = await AsyncStorage.getItem('@meus_projetos');
+      const obras = obrasSalvas ? JSON.parse(obrasSalvas) : [];
+      const destino = obras.find(obra => obra.id === projetoSelecionado);
+      if (!destino) {
+        Alert.alert('Aviso', 'Esta obra não está mais disponível. Selecione outra obra.');
+        return;
+      }
       // Cria a chave específica da obra selecionada
       const chaveMateriais = `@materiais_${projetoSelecionado}`;
       const dadosAtuais = await AsyncStorage.getItem(chaveMateriais);
@@ -146,10 +163,17 @@ export default function Calcular() {
       setPrecoUnitario("");
       setComprimentoPiso("");
       setLarguraPiso("");
-      router.navigate('/projetos'); // Volta pra aba de projetos
+      if (idOrigem) {
+        router.dismissTo({ pathname: '/projeto-detalhes', params: { id: destino.id, titulo: destino.titulo } });
+      } else {
+        router.navigate('/projetos');
+      }
 
     } catch (_e) {
       Alert.alert("Erro", "Não foi possível salvar no projeto.");
+    } finally {
+      envio.current = false;
+      setSalvando(false);
     }
   };
 
@@ -166,6 +190,11 @@ export default function Calcular() {
           <Text style={styles.subtitle}>Estime materiais e custos em segundos.</Text>
         </View>
       </View>
+
+      {!!idOrigem && <TouchableOpacity accessibilityRole="button" disabled={salvando}
+        style={{ minHeight: 48, padding: 16 }} onPress={() => router.back()}>
+        <Text style={{ color: '#9a3412', fontWeight: 'bold' }}>Voltar ao orçamento</Text>
+      </TouchableOpacity>}
 
       {/* FORMULÁRIO */}
       <View style={styles.card}>
@@ -256,7 +285,7 @@ export default function Calcular() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.btnCalcular} onPress={realizarCalculo}>
+        <TouchableOpacity accessibilityRole="button" style={styles.btnCalcular} onPress={realizarCalculo}>
           <MaterialCommunityIcons name="calculator" size={24} color="#fff" />
           <Text style={styles.btnCalcularText}>Calcular Total</Text>
         </TouchableOpacity>
@@ -302,13 +331,13 @@ export default function Calcular() {
               </Picker>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity accessibilityRole="button"
               style={[styles.btnSalvar, !projetoSelecionado && { backgroundColor: '#d4d4d8' }]} 
               onPress={salvarNoProjeto}
-              disabled={!projetoSelecionado}
+              disabled={!projetoSelecionado || salvando}
             >
               <MaterialCommunityIcons name="content-save" size={20} color={!projetoSelecionado ? "#71717a" : "#fff"} />
-              <Text style={[styles.btnCalcularText, !projetoSelecionado && { color: "#71717a" }]}>Salvar Material na Obra</Text>
+              <Text style={[styles.btnCalcularText, !projetoSelecionado && { color: "#71717a" }]}>{salvando ? 'Salvando...' : 'Salvar Material na Obra'}</Text>
             </TouchableOpacity>
           </View>
         </View>
