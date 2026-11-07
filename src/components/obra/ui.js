@@ -1,3 +1,4 @@
+import { screenStyles } from '../ScreenLayout';
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { TAMANHO_PAGINA } from '../../services/obra';
@@ -51,7 +52,7 @@ export function itensPagina(itens, pagina) {
 }
 
 export const estilos = StyleSheet.create({
-  painel: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#e4e4e7', gap: 16 },
+  painel: { ...screenStyles.card, gap: 16 },
   titulo: { fontSize: 20, fontWeight: 'bold', color: '#18181b' },
   subtitulo: { fontSize: 17, fontWeight: 'bold', color: '#18181b' },
   texto: { fontSize: 15, color: '#3f3f46', lineHeight: 22 },
@@ -59,10 +60,10 @@ export const estilos = StyleSheet.create({
   input: { minHeight: 48, borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#fafafa', padding: 12, borderRadius: 10, color: '#18181b', fontSize: 16 },
   campo: { gap: 8 },
   label: { color: '#27272a', fontSize: 14, fontWeight: 'bold' },
-  botao: { minHeight: 48, padding: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#18181b' },
+  botao: { maxWidth: '100%', minWidth: 0, flexShrink: 1, minHeight: 48, padding: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#18181b' },
   secundario: { backgroundColor: '#f4f4f5' },
   perigo: { backgroundColor: '#b91c1c' },
-  textoBotao: { color: '#fff', fontSize: 15, fontWeight: 'bold', textAlign: 'center' },
+  textoBotao: { flexShrink: 1, color: '#fff', fontSize: 15, fontWeight: 'bold', textAlign: 'center' },
   textoSecundario: { color: '#9a3412' },
   desabilitado: { opacity: 0.5 },
   item: { paddingVertical: 16, gap: 12, borderTopWidth: 1, borderColor: '#e4e4e7' },

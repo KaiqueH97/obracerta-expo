@@ -1,9 +1,9 @@
+import AppHeader, { useScreenContentStyle, screenStyles } from '../components/ScreenLayout';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseDiaria, validarEquipe } from '../utils/equipe';
 
@@ -16,7 +16,7 @@ async function lerEquipe() {
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function Equipe() {
-  const insets = useSafeAreaInsets();
+  const contentStyle = useScreenContentStyle();
   const [funcionarios, setFuncionarios] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState(false);
@@ -146,10 +146,7 @@ export default function Equipe() {
   </View>;
 
   return <View style={styles.container}>
-    <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-      <MaterialCommunityIcons name="hard-hat" size={30} color="#ea580c" />
-      <Text style={styles.brand}>Obra <Text style={styles.highlight}>Certa</Text></Text>
-    </View>
+    <AppHeader />
     {carregando ? <View style={styles.feedback}>
       <ActivityIndicator size="large" color="#ea580c" /><Text>Carregando equipe...</Text>
     </View> : erroCarga ? <View style={styles.feedback}>
@@ -160,7 +157,7 @@ export default function Equipe() {
       </TouchableOpacity>
     </View> : <FlatList ref={lista} data={funcionarios} keyExtractor={item => item.id}
       keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
-      contentContainerStyle={styles.content} ListHeaderComponent={cabecalho}
+      contentContainerStyle={contentStyle} ListHeaderComponent={cabecalho}
       ListEmptyComponent={<View style={styles.card}>
         <MaterialCommunityIcons name="account-group-outline" size={40} color="#71717a" />
         <Text style={styles.sectionTitle}>Nenhum profissional na sua equipe.</Text>
@@ -199,16 +196,12 @@ export default function Equipe() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
-  header: { backgroundColor: '#18181b', paddingBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, borderBottomWidth: 4, borderBottomColor: '#ea580c' },
-  brand: { color: '#fff', fontSize: 28, fontWeight: '900' },
-  highlight: { color: '#ea580c' },
-  content: { padding: 16, paddingBottom: 40, width: '100%', maxWidth: 900, alignSelf: 'center' },
+  container: screenStyles.page,
   section: { gap: 12 },
-  title: { fontSize: 28, fontWeight: '900', color: '#18181b' },
-  subtitle: { fontSize: 15, color: '#52525b', lineHeight: 22 },
+  title: screenStyles.title,
+  subtitle: screenStyles.subtitle,
   local: { fontSize: 13, color: '#71717a', lineHeight: 20 },
-  card: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#e4e4e7', padding: 20, marginVertical: 8, gap: 8 },
+  card: { ...screenStyles.card, marginVertical: 8, gap: 8 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#18181b' },
   label: { fontSize: 14, fontWeight: 'bold', color: '#27272a', marginTop: 8 },
   input: { borderWidth: 1, borderColor: '#d4d4d8', backgroundColor: '#fafafa', color: '#18181b', borderRadius: 10, padding: 14, fontSize: 16, minHeight: 48 },

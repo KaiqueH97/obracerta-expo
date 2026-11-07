@@ -1,7 +1,7 @@
+import AppHeader, { useScreenContentStyle, screenStyles } from '../components/ScreenLayout';
 import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
@@ -22,7 +22,7 @@ export default function ProjetoDetalhes() {
 }
 
 function Detalhes({ id }) {
-  const insets = useSafeAreaInsets();
+  const contentStyle = useScreenContentStyle();
   const { wide, desktop } = useResponsiveLayout();
   const [dados, setDados] = useState(null);
   const [perfil, setPerfil] = useState(null);
@@ -70,14 +70,14 @@ function Detalhes({ id }) {
     } finally { envio.current = false; setOcupado(false); }
   }
 
-  if (carregando || erro || !dados) return <View style={[styles.feedback, { paddingTop: insets.top + 24 }]}>
+  if (carregando || erro || !dados) return <View style={screenStyles.page}><AppHeader /><View style={styles.feedback}>
     <Text style={estilos.titulo}>Detalhes da Obra</Text>
     {carregando ? <ActivityIndicator size="large" color="#ea580c" /> : <>
       <Text accessibilityRole="alert" style={estilos.texto}>{erro}</Text>
       <Botao texto="Tentar novamente" onPress={carregar} />
     </>}
     <Botao texto="Voltar aos projetos" secundario onPress={() => router.navigate('/projetos')} />
-  </View>;
+  </View></View>;
 
   const resumo = resumoFinanceiro(dados.materiais, dados.transacoes);
   const indicadores = [
@@ -92,10 +92,9 @@ function Detalhes({ id }) {
     setCotacao(texto.join('\n'));
   }
 
-  return <ScrollView style={styles.container} contentContainerStyle={[styles.content, {
-    paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom, 24),
-    paddingLeft: Math.max(insets.left, 16), paddingRight: Math.max(insets.right, 16),
-  }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+  return <View style={screenStyles.page}><AppHeader />
+    <ScrollView style={styles.container} contentContainerStyle={[contentStyle, { gap: 16 }]}
+      keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <View style={styles.header}>
       <Botao texto="← Projetos" secundario disabled={ocupado} onPress={() => router.navigate('/projetos')} />
       <View style={styles.headerText}>
@@ -139,16 +138,15 @@ function Detalhes({ id }) {
       </View>}
     </View>
     <View style={styles.rodape}><MaterialCommunityIcons name="hard-hat" size={20} color="#ea580c" /><Text style={estilos.ajuda}>Obra Certa</Text></View>
-  </ScrollView>;
+  </ScrollView></View>;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f4f5' },
-  content: { width: '100%', maxWidth: 1440, alignSelf: 'center', gap: 16 },
+  container: screenStyles.page,
   feedback: { flex: 1, justifyContent: 'center', padding: 24, gap: 20, backgroundColor: '#fafafa' },
-  header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 16, backgroundColor: '#fff', borderRadius: 16, padding: 16 },
+  header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 16, marginBottom: 8 },
   headerText: { flexGrow: 1, flexShrink: 1, gap: 6 },
-  title: { color: '#18181b', fontSize: 26, fontWeight: '900' },
+  title: screenStyles.title,
   indicadores: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
   indicador: { backgroundColor: '#fff', borderRadius: 12, padding: 16, gap: 10, borderWidth: 1, borderColor: '#e4e4e7' },
   valor: { fontSize: 22, fontWeight: '900' },

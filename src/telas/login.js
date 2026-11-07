@@ -38,7 +38,7 @@ export default function Login() {
   return (
     <AuthLayout>
       <View style={styles.card}>
-        <Text style={styles.title}>Obra Certa</Text>
+        <Text style={styles.title}>Entrar na conta</Text>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
@@ -107,23 +107,18 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 440,
     backgroundColor: '#ffffff',
     padding: 24,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    borderColor: '#e4e4e7',
   },
   title: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '900',
     textAlign: 'center',
-    color: '#ea580c',
+    color: '#18181b',
     marginBottom: 32,
   },
   form: {
@@ -134,25 +129,27 @@ const styles = StyleSheet.create({
   },
   label: {
     color: '#1f2937',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   input: {
+    minHeight: 48,
     width: '100%',
     padding: 16,
     borderWidth: 1,
     borderColor: '#d1d5db',
-    borderRadius: 8,
-    fontSize: 18,
-    color: '#000',
+    borderRadius: 10,
+    fontSize: 16,
+    color: '#18181b',
     backgroundColor: '#fff',
   },
   btnSubmit: {
+    minHeight: 48,
     width: '100%',
     backgroundColor: '#ea580c',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
@@ -163,7 +160,7 @@ const styles = StyleSheet.create({
   btnSubmitText: {
     color: '#ffffff',
     fontWeight: 'bold',
-    fontSize: 20,
+    fontSize: 16,
   },
   footer: {
     marginTop: 24,

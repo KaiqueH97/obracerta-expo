@@ -1,20 +1,19 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import AppHeader, { screenStyles, useScreenContentStyle } from './ScreenLayout';
 
 export default function AuthLayout({ children }) {
-  return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {children}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+  const contentStyle = useScreenContentStyle();
+  return <View style={screenStyles.page}>
+    <AppHeader />
+    <KeyboardAvoidingView style={screenStyles.page} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={[contentStyle, styles.content]} keyboardShouldPersistTaps="handled">
+        {children}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f3f4f6' },
-  content: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 16 },
+  content: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
 });

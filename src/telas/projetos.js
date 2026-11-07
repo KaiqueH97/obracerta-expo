@@ -1,5 +1,5 @@
+import AppHeader, { useScreenContentStyle, screenStyles } from '../components/ScreenLayout';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function Projetos() {
-  const insets = useSafeAreaInsets();
+  const contentStyle = useScreenContentStyle();
   const [projetos, setProjetos] = useState([]);
   const [novoProjeto, setNovoProjeto] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -111,24 +111,25 @@ export default function Projetos() {
 
   if (carregando) {
     return (
-      <View style={styles.center}>
+      <View style={screenStyles.page}><AppHeader /><View style={styles.center}>
         <ActivityIndicator size="large" color="#ea580c" />
-      </View>
+      </View></View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* NOVO TOPO: Tarja Preta */}
-      <View style={[styles.blackHeader, { paddingTop: insets.top + 20 }]}>
-        <Text style={styles.headerTitle}>Meus Projetos</Text>
-      </View>
+      <AppHeader />
 
-      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={contentStyle} showsVerticalScrollIndicator={false}>
         
+        <View style={{ marginBottom: 24, gap: 4 }}>
+          <Text style={screenStyles.title}>Meus Projetos</Text>
+          <Text style={screenStyles.subtitle}>Gerencie e crie novas obras no sistema.</Text>
+        </View>
         {/* FORMULÁRIO DE CRIAÇÃO */}
         <View style={styles.createCard}>
-          <Text style={styles.cardDesc}>Gerencie e crie novas obras no sistema.</Text>
+          <Text style={styles.cardDesc}>Nova obra</Text>
           <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
@@ -242,26 +243,9 @@ export default function Projetos() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: { flex: 1, backgroundColor: '#fafafa' },
-  blackHeader: {
-    backgroundColor: '#18181b',
-    paddingTop: 20,
-    paddingBottom: 20,
-    alignItems: 'center',
-    borderBottomWidth: 4,
-    borderBottomColor: '#ea580c',
-  },
-  headerTitle: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
-  scrollContent: { padding: 16, paddingBottom: 60 },
+  container: screenStyles.page,
   
-  createCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e4e4e7',
-    marginBottom: 24,
-  },
+  createCard: { ...screenStyles.card, marginBottom: 24 },
   cardDesc: { color: '#71717a', marginBottom: 12 },
   inputRow: { flexDirection: 'row', gap: 8 },
   input: {
@@ -272,7 +256,10 @@ const styles = StyleSheet.create({
     borderColor: '#d4d4d8',
     borderRadius: 8,
     paddingHorizontal: 12,
-    height: 48,
+    paddingVertical: 12,
+    minHeight: 48,
+    fontSize: 16,
+    color: '#18181b',
   },
   btnAdd: {
     backgroundColor: '#18181b',
@@ -288,14 +275,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 18, color: '#71717a', fontWeight: 'bold', marginTop: 12 },
   emptySub: { fontSize: 14, color: '#a1a1aa', textAlign: 'center', marginTop: 4 },
   
-  projectCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e4e4e7',
-    padding: 16,
-    marginBottom: 12,
-  },
+  projectCard: { ...screenStyles.card, marginBottom: 12 },
   projectInfoRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   iconBox: {
     backgroundColor: '#ffedd5',
@@ -305,7 +285,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  projectTexts: { flex: 1 },
+  projectTexts: { flex: 1, minWidth: 0 },
   projectTitle: { fontSize: 16, fontWeight: 'bold', color: '#18181b' },
   projectMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   metaText: { fontSize: 12, color: '#71717a' },
@@ -319,13 +299,14 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   actionIcons: { flexDirection: 'row', gap: 16 },
-  iconBtn: { padding: 4 },
+  iconBtn: { minHeight: 48, minWidth: 48, justifyContent: 'center', alignItems: 'center' },
   btnOpen: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffedd5',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 12,
+    minHeight: 48,
     borderRadius: 8,
     gap: 4,
   },
@@ -341,18 +322,24 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
-  editActions: { flexDirection: 'row', gap: 8 },
+  editActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   btnCancel: {
+    minHeight: 48,
+    justifyContent: 'center',
     flex: 1, backgroundColor: '#f4f4f5', padding: 12, borderRadius: 8, alignItems: 'center'
   },
   btnCancelText: { color: '#52525b', fontWeight: 'bold' },
   btnSave: {
+    minHeight: 48,
+    justifyContent: 'center',
     flex: 1, backgroundColor: '#10b981', padding: 12, borderRadius: 8, alignItems: 'center'
   },
   btnSaveText: { color: '#fff', fontWeight: 'bold' },
   deleteMode: { gap: 12 },
   deleteWarning: { color: '#ef4444', fontWeight: 'bold', textAlign: 'center' },
   btnConfirmDelete: {
+    minHeight: 48,
+    justifyContent: 'center',
     flex: 1, backgroundColor: '#ef4444', padding: 12, borderRadius: 8, alignItems: 'center'
   }
 });

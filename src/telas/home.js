@@ -1,5 +1,5 @@
+import AppHeader, { useScreenContentStyle, screenStyles } from '../components/ScreenLayout';
 import { router, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
 import React, { useCallback, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,7 +15,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function Home() {
-  const insets = useSafeAreaInsets();
+  const contentStyle = useScreenContentStyle();
   const { compact, wide, desktop } = useResponsiveLayout();
   const [resumo, setResumo] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -46,24 +46,9 @@ export default function Home() {
   return (
     <View style={styles.container}>
 
-      {/* NOVO TOPO: Tarja Preta com Capacete */}
-      <View style={[styles.blackHeader, { paddingTop: insets.top + 20 }]}>
-        <MaterialCommunityIcons name="hard-hat" size={32} color="#ea580c" />
-        <Text style={styles.headerBrand}>
-          Obra <Text style={styles.headerBrandHighlight}>Certa</Text>
-        </Text>
-      </View>
-
-      {/*
-        O contentContainerStyle é o segredo para o ScrollView rolar!
-        Ele aplica o padding por dentro do conteúdo, permitindo chegar até o fim.
-      */}
-      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
-        style={styles.scrollArea}
-        contentContainerStyle={[styles.scrollContent, { paddingLeft: Math.max(insets.left, 16), paddingRight: Math.max(insets.right, 16) }]}
-        showsVerticalScrollIndicator={false}
-      >
-
+      <AppHeader />
+      <ScrollView style={styles.scrollArea} contentContainerStyle={contentStyle}
+        keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
         {/* Saudação */}
         <View style={styles.greeting}>
           <Text style={styles.title}>Resumo da Obra</Text>
@@ -180,51 +165,14 @@ const styles = StyleSheet.create({
   emptyState: { paddingVertical: 16, gap: 12, alignItems: 'center' },
   projectItemCompact: { flexDirection: 'column', alignItems: 'stretch' },
   container: {
-    flex: 1,
-    backgroundColor: '#fafafa', // Fundo de toda a tela
+    ...screenStyles.page,
   },
-  blackHeader: {
-    backgroundColor: '#18181b', // Preto escuro/chumbo
-    paddingTop: 20, // Espaço para não ficar embaixo do relógio do celular
-    paddingBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    borderBottomWidth: 4,
-    borderBottomColor: '#ea580c', // Detalhe laranja embaixo da tarja
-  },
-  headerBrand: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: '900',
-  },
-  headerBrandHighlight: {
-    color: '#ea580c', // Laranja Obra Certa
-  },
-  scrollArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    width: '100%',
-    maxWidth: 1200,
-    alignSelf: 'center',
-    padding: 16,
-    paddingBottom: 40, // Esse espaço no final faz o ScrollView não travar!
-  },
+  scrollArea: { flex: 1 },
   greeting: {
     marginBottom: 24,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#18181b',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#71717a',
-    marginTop: 4,
-  },
+  title: screenStyles.title,
+  subtitle: { ...screenStyles.subtitle, marginTop: 4 },
   quickAccess: {
     flexDirection: 'column',
     gap: 12,
@@ -252,16 +200,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 24,
   },
-  card: {
-    width: '48%',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#f4f4f5',
-    marginBottom: 16,
-    elevation: 1,
-  },
+  card: { ...screenStyles.card, width: '48%', marginBottom: 16, elevation: 1 },
   iconBox: {
     width: 40,
     height: 40,
@@ -281,13 +220,7 @@ const styles = StyleSheet.create({
     color: '#18181b',
     marginTop: 4,
   },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#f4f4f5',
-  },
+  section: screenStyles.card,
   sectionHeader: {
     flexWrap: 'wrap',
     gap: 8,

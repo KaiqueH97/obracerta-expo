@@ -1,15 +1,15 @@
+import AppHeader, { useScreenContentStyle, screenStyles } from '../components/ScreenLayout';
 import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { criarRepositorioPerfil, iniciaisPerfil } from '../services/perfil';
 
 const repositorio = criarRepositorioPerfil(AsyncStorage);
 
 export default function Perfil() {
-  const insets = useSafeAreaInsets();
+  const contentStyle = useScreenContentStyle();
   const [perfil, setPerfil] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState(false);
@@ -85,10 +85,7 @@ export default function Perfil() {
   }
 
   return <View style={styles.container}>
-    <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-      <MaterialCommunityIcons name="hard-hat" size={30} color="#ea580c" />
-      <Text style={styles.brand}>Obra <Text style={styles.highlight}>Certa</Text></Text>
-    </View>
+    <AppHeader />
     {carregando ? <View style={styles.feedback}>
       <ActivityIndicator size="large" color="#ea580c" /><Text>Carregando perfil...</Text>
     </View> : erroCarga ? <View style={styles.feedback}>
@@ -102,7 +99,7 @@ export default function Perfil() {
       </TouchableOpacity>
       {!!mensagem && <Text accessibilityLiveRegion="polite" style={styles.message}>{mensagem}</Text>}
     </View> : perfil && <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
-      contentContainerStyle={styles.content}>
+      contentContainerStyle={[contentStyle, { gap: 16 }]}>
       <Text style={styles.title}>Meu Perfil</Text>
       <Text style={styles.subtitle}>Gerencie suas informações e preferências do sistema.</Text>
       <View style={[styles.card, styles.badge]}>
@@ -170,14 +167,10 @@ export default function Perfil() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
-  header: { backgroundColor: '#18181b', paddingBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, borderBottomWidth: 4, borderBottomColor: '#ea580c' },
-  brand: { color: '#fff', fontSize: 28, fontWeight: '900' },
-  highlight: { color: '#ea580c' },
-  content: { padding: 16, paddingBottom: 40, gap: 12, width: '100%', maxWidth: 900, alignSelf: 'center' },
-  title: { fontSize: 28, fontWeight: '900', color: '#18181b' },
-  subtitle: { fontSize: 15, color: '#52525b', lineHeight: 22 },
-  card: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#e4e4e7', padding: 20, gap: 10 },
+  container: screenStyles.page,
+  title: screenStyles.title,
+  subtitle: screenStyles.subtitle,
+  card: { ...screenStyles.card, gap: 10 },
   badge: { alignItems: 'center' },
   avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#ffedd5', alignItems: 'center', justifyContent: 'center' },
   initials: { fontSize: 30, color: '#c2410c', fontWeight: '900' },

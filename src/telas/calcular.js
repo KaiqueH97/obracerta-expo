@@ -1,5 +1,5 @@
+import AppHeader, { useScreenContentStyle, screenStyles } from '../components/ScreenLayout';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
 import React, { useState, useCallback, useRef } from 'react';
 import { 
@@ -23,7 +23,7 @@ const OPCOES_MATERIAIS = {
 };
 
 export default function Calcular() {
-  const insets = useSafeAreaInsets();
+  const contentStyle = useScreenContentStyle();
   const { projetoId } = useLocalSearchParams();
   const idOrigem = typeof projetoId === 'string' ? projetoId : '';
   const [salvando, setSalvando] = useState(false);
@@ -178,17 +178,13 @@ export default function Calcular() {
   };
 
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={[styles.scrollContent, { width: '100%', maxWidth: 760, alignSelf: 'center' }]} showsVerticalScrollIndicator={false} style={styles.container}>
+    <View style={screenStyles.page}>
+    <AppHeader />
+    <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={contentStyle} showsVerticalScrollIndicator={false} style={styles.container}>
       
-      {/* HEADER */}
-      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <View style={styles.iconBox}>
-          <MaterialCommunityIcons name="calculator-variant" size={28} color="#ea580c" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Calculadora</Text>
-          <Text style={styles.subtitle}>Estime materiais e custos em segundos.</Text>
-        </View>
+      <View style={{ marginBottom: 24, gap: 4 }}>
+        <Text style={screenStyles.title}>Calculadora</Text>
+        <Text style={screenStyles.subtitle}>Estime materiais e custos em segundos.</Text>
       </View>
 
       {!!idOrigem && <TouchableOpacity accessibilityRole="button" disabled={salvando}
@@ -200,7 +196,7 @@ export default function Calcular() {
       <View style={styles.card}>
         <Text style={styles.label}>Superfície</Text>
         <View style={styles.pickerContainer}>
-          <Picker
+          <Picker style={screenStyles.picker}
             selectedValue={superficie}
             onValueChange={(itemValue) => {
               setSuperficie(itemValue);
@@ -217,7 +213,7 @@ export default function Calcular() {
 
         <Text style={styles.label}>Tipo de Material</Text>
         <View style={[styles.pickerContainer, !superficie && { backgroundColor: '#f4f4f5' }]}>
-          <Picker
+          <Picker style={screenStyles.picker}
             enabled={!!superficie}
             selectedValue={material}
             onValueChange={(itemValue) => {
@@ -323,7 +319,7 @@ export default function Calcular() {
           <View style={styles.salvarBox}>
             <Text style={styles.label}>Vincular a uma Obra Ativa</Text>
             <View style={styles.pickerContainer}>
-              <Picker selectedValue={projetoSelecionado} onValueChange={setProjetoSelecionado}>
+              <Picker style={screenStyles.picker} selectedValue={projetoSelecionado} onValueChange={setProjetoSelecionado}>
                 <Picker.Item label="Selecione um projeto..." value="" color="#a1a1aa" />
                 {projetos.map((proj) => (
                   <Picker.Item key={proj.id} label={proj.titulo} value={proj.id} />
@@ -344,21 +340,13 @@ export default function Calcular() {
       )}
 
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f4f4f5' },
-  scrollContent: { paddingBottom: 100 },
-  header: {
-    backgroundColor: '#fff', padding: 20, paddingTop: 20,
-    flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: '#e4e4e7'
-  },
-  iconBox: { backgroundColor: '#ffedd5', padding: 10, borderRadius: 12, marginRight: 16 },
-  title: { fontSize: 24, fontWeight: '900', color: '#18181b' },
-  subtitle: { fontSize: 13, color: '#71717a' },
-  
-  card: { backgroundColor: '#fff', margin: 16, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#e4e4e7' },
+  container: screenStyles.page,
+  card: { ...screenStyles.card, marginBottom: 16 },
   label: { fontSize: 14, fontWeight: 'bold', color: '#18181b', marginBottom: 8 },
   labelSmall: { fontSize: 12, fontWeight: 'bold', color: '#71717a', marginBottom: 4 },
   
@@ -369,10 +357,10 @@ const styles = StyleSheet.create({
   boxTitle: { fontSize: 12, fontWeight: 'bold', color: '#c2410c', marginBottom: 8 },
   
   input: {
-    minWidth: 0, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 8, padding: 12, fontSize: 16 },
+    minWidth: 0, minHeight: 48, color: '#18181b', backgroundColor: '#fff', borderWidth: 1, borderColor: '#d4d4d8', borderRadius: 8, padding: 12, fontSize: 16 },
   
   medicoesHeader: { flexWrap: 'wrap', gap: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  btnNovaArea: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffedd5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, gap: 4 },
+  btnNovaArea: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffedd5', paddingHorizontal: 12, paddingVertical: 12, minHeight: 48, borderRadius: 12, gap: 4 },
   btnNovaAreaText: { color: '#c2410c', fontWeight: 'bold', fontSize: 12 },
   
   medidaRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', backgroundColor: '#fafafa', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e4e4e7', marginBottom: 12 },
@@ -383,16 +371,16 @@ const styles = StyleSheet.create({
   inputPreco: { minWidth: 0, flex: 1, paddingVertical: 12, fontSize: 16, fontWeight: 'bold', textAlign: 'right' },
   
   btnCalcular: { flexDirection: 'row', backgroundColor: '#18181b', padding: 16, borderRadius: 12, justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 8 },
-  btnCalcularText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  btnCalcularText: { color: '#fff', fontWeight: 'bold', fontSize: 16, flexShrink: 1, textAlign: 'center' },
 
-  resultadoCard: { backgroundColor: '#fff', marginHorizontal: 16, marginBottom: 40, borderRadius: 16, borderWidth: 1, borderColor: '#a7f3d0', overflow: 'hidden' },
+  resultadoCard: { backgroundColor: '#fff', marginBottom: 16, borderRadius: 16, borderWidth: 1, borderColor: '#a7f3d0', overflow: 'hidden' },
   resultadoHeader: { backgroundColor: '#ecfdf5', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, borderColor: '#d1fae5' },
   resultadoTitle: { fontSize: 18, fontWeight: 'bold', color: '#065f46' },
   resultadoMaterial: { fontSize: 12, fontWeight: 'bold', color: '#047857', marginTop: 16, marginHorizontal: 16 },
   rowResult: { flexWrap: 'wrap', flexDirection: 'row', alignItems: 'baseline', gap: 8, marginHorizontal: 16 },
   resultadoValor: { fontSize: 48, fontWeight: '900', color: '#022c22' },
   resultadoUnidade: { fontSize: 20, fontWeight: 'bold', color: '#022c22' },
-  resultadoArea: { fontSize: 12, color: '#047857', marginHorizontal: 16, marginBottom: 16, fontWeight: '500' },
+  resultadoArea: { fontSize: 12, color: '#047857', marginBottom: 16, fontWeight: '500' },
   
   pecasBox: { backgroundColor: '#d1fae5', padding: 12, marginHorizontal: 16, borderRadius: 8, marginBottom: 16 },
   pecasTitle: { fontSize: 12, fontWeight: 'bold', color: '#065f46' },

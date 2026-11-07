@@ -1,3 +1,4 @@
+import { screenStyles } from '../ScreenLayout';
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -35,7 +36,7 @@ export default function Caixa({ transacoes, equipe, salvar, ocupado }) {
   return <View style={estilos.painel}>
     <Text accessibilityRole="header" style={estilos.titulo}>Caixa da Obra</Text>
     <Text style={estilos.label}>Tipo de lançamento</Text>
-    <View style={estilos.seletor}><Picker accessibilityLabel="Tipo de lançamento" selectedValue={tipo} enabled={!bloqueado} onValueChange={novo => {
+    <View style={estilos.seletor}><Picker style={screenStyles.picker} accessibilityLabel="Tipo de lançamento" selectedValue={tipo} enabled={!bloqueado} onValueChange={novo => {
       setTipo(novo); setFuncionarioId(''); setValor(''); setErro('');
     }}>
       <Picker.Item label="Entrada: Dinheiro do Cliente" value="RECEBIMENTO_CLIENTE" />
@@ -43,7 +44,7 @@ export default function Caixa({ transacoes, equipe, salvar, ocupado }) {
     </Picker></View>
     {tipo === 'PAGAMENTO_FUNCIONARIO' && <>
       <Text style={estilos.label}>Profissional</Text>
-      <View style={estilos.seletor}><Picker accessibilityLabel="Profissional" selectedValue={funcionarioId} enabled={!bloqueado} onValueChange={selecionado => {
+      <View style={estilos.seletor}><Picker style={screenStyles.picker} accessibilityLabel="Profissional" selectedValue={funcionarioId} enabled={!bloqueado} onValueChange={selecionado => {
         setFuncionarioId(selecionado);
         const profissional = equipe.find(item => item.id === selecionado);
         setValor(profissional?.valor_diaria == null ? '' : profissional.valor_diaria.toFixed(2).replace('.', ','));
