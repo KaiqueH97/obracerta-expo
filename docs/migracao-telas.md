@@ -32,23 +32,53 @@ Os dados anteriores do MMKV não são transferidos automaticamente.
 7. Cancele uma exclusão e depois confirme; somente a confirmação deve remover.
 8. Confira se Login, Cadastro, Projetos, Calcular e detalhes continuam acessíveis.
 
+## Etapa 2 — Perfil
+
+- Avatar com iniciais, nome, WhatsApp e e-mail utilizado no login.
+- Edição e cancelamento de nome e WhatsApp; e-mail somente para leitura.
+- Nome obrigatório e validação de telefone opcional com DDD.
+- Perfis salvos por e-mail na chave `@obracerta_perfil:<email normalizado>`.
+- Primeiro acesso aproveita o cadastro local somente quando o e-mail corresponde.
+- O perfil não copia nem exibe a senha armazenada pelo cadastro demonstrativo.
+- Falhas de leitura bloqueiam a edição e oferecem nova tentativa.
+- Falhas de gravação mantêm o formulário aberto para tentar novamente.
+- Sair remove `@usuario_email` e retorna ao login, preservando os dados locais.
+- A seção de senha informa que a redefinição será implementada na próxima etapa.
+
+A separação dos perfis por e-mail organiza os dados locais. O aplicativo continua
+com login demonstrativo, sem autenticação ou sincronização com Supabase.
+
+### Como conferir o perfil no celular
+
+1. Abra a aba Perfil: confira o e-mail utilizado ao entrar no aplicativo.
+2. Se houver cadastro com o mesmo e-mail, confira o nome inicial; caso contrário,
+   o perfil começa como “Usuário”, com WhatsApp não informado.
+3. Edite o nome e o WhatsApp, salve e confira as iniciais do avatar.
+4. Abra a edição, altere os campos e cancele: os dados salvos devem permanecer.
+5. Tente salvar nome vazio ou telefone como `123`: deve aparecer uma validação.
+6. Salve um WhatsApp vazio: deve aparecer “Não informado”.
+7. Feche e reabra o app, entre com o mesmo e-mail e confira o perfil salvo.
+8. Saia do sistema: deve voltar ao login. Confira também o botão Voltar do Android.
+9. Entre com outro e-mail: o perfil anterior não deve aparecer. Entre novamente
+   com o primeiro e-mail: as informações salvas devem continuar disponíveis.
+10. Confira se os registros de equipe e projetos permanecem após sair e entrar.
+
 ## Verificações automatizadas
 
 ```sh
 npm run lint
 npm run typecheck
-node --test tests/equipe.test.mjs
-npx expo export --platform android
+node --test tests/*.test.mjs
+npx expo export --platform android --platform ios
 ```
 
 O typecheck verifica JavaScript com `checkJs`; não converte o código para TypeScript.
-A validação em um aparelho físico deve ser feita pelo roteiro acima.
+A validação em um aparelho físico deve ser feita pelos roteiros acima.
 
 ## Próximas etapas, com commits separados
 
-1. Perfil.
-2. Recuperar senha.
-3. Redefinir senha.
+1. Recuperar senha.
+2. Redefinir senha.
 
 As telas de senha exigem definir uma autenticação real para enviar e validar links
 por e-mail; o login demonstrativo atual não oferece esse serviço.
