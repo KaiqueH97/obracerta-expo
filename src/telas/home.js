@@ -1,35 +1,51 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useResponsiveLayout from '../hooks/useResponsiveLayout';
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity 
+import React, { useCallback, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { carregarResumo } from '../services/home';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function Home() {
   const insets = useSafeAreaInsets();
   const { compact, wide, desktop } = useResponsiveLayout();
-  // Dados fixos apenas para visualização do Front-end (Mock)
-  const metricas = {
-    obrasAtivas: 2,
-    tarefasConcluidas: 18,
-    tarefasPendentes: 3,
-    custoTotal: '15.450,00'
-  };
+  const [resumo, setResumo] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState(false);
+  const leitura = useRef(0);
+  const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const projetos = [
-    { id: '1', titulo: 'Reforma Escola Municipal', status: 'Em andamento' },
-    { id: '2', titulo: 'Construção Anexo Fatec', status: 'Em andamento' }
-  ];
+  const atualizar = useCallback(() => {
+    const versao = ++leitura.current;
+    setCarregando(true);
+    setErro(false);
+    carregarResumo(AsyncStorage).then(dados => {
+      if (versao !== leitura.current) return;
+      setResumo(dados);
+      setCarregando(false);
+    }).catch(() => {
+      if (versao !== leitura.current) return;
+      setErro(true);
+      setCarregando(false);
+    });
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    atualizar();
+    return () => { leitura.current++; };
+  }, [atualizar]));
 
   return (
     <View style={styles.container}>
-      
+
       {/* NOVO TOPO: Tarja Preta com Capacete */}
       <View style={[styles.blackHeader, { paddingTop: insets.top + 20 }]}>
         <MaterialCommunityIcons name="hard-hat" size={32} color="#ea580c" />
@@ -38,25 +54,25 @@ export default function Home() {
         </Text>
       </View>
 
-      {/* 
-        O contentContainerStyle é o segredo para o ScrollView rolar! 
+      {/*
+        O contentContainerStyle é o segredo para o ScrollView rolar!
         Ele aplica o padding por dentro do conteúdo, permitindo chegar até o fim.
       */}
       <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets
-        style={styles.scrollArea} 
-        contentContainerStyle={styles.scrollContent} 
+        style={styles.scrollArea}
+        contentContainerStyle={[styles.scrollContent, { paddingLeft: Math.max(insets.left, 16), paddingRight: Math.max(insets.right, 16) }]}
         showsVerticalScrollIndicator={false}
       >
-        
+
         {/* Saudação */}
         <View style={styles.greeting}>
           <Text style={styles.title}>Resumo da Obra</Text>
-          <Text style={styles.subtitle}>Veja o status dos seus canteiros hoje.</Text>
+          <Text style={styles.subtitle}>Acompanhe suas obras, tarefas e materiais cadastrados.</Text>
         </View>
 
         {/* ACESSO RÁPIDO */}
         <View style={[styles.quickAccess, wide && { flexDirection: 'row' }]}>
-          <TouchableOpacity 
+          <TouchableOpacity accessibilityRole="button"
             style={[styles.btnAction, wide && { flex: 1 }, { backgroundColor: '#ea580c' }]}
             onPress={() => router.navigate('/calcular')}
           >
@@ -65,7 +81,7 @@ export default function Home() {
             <Text style={styles.btnText}>Nova Medição</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity accessibilityRole="button"
             style={[styles.btnAction, wide && { flex: 1 }, { backgroundColor: '#27272a' }]}
             onPress={() => router.navigate('/projetos')}
           >
@@ -74,38 +90,47 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
+        {carregando ? <View style={styles.feedback}>
+          <ActivityIndicator color="#ea580c" size="large" />
+          <Text style={styles.subtitle}>Carregando resumo...</Text>
+        </View> : erro ? <View style={styles.feedback}>
+          <Text accessibilityRole="alert" style={styles.subtitle}>Não foi possível carregar o resumo. Tente novamente.</Text>
+          <TouchableOpacity accessibilityRole="button" style={styles.retryButton} onPress={atualizar}>
+            <Text style={styles.btnText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View> : resumo && <>
         {/* CARDS DE MÉTRICAS */}
         <View style={styles.gridContainer}>
-          <View style={[styles.card, { width: compact ? '100%' : desktop ? '23.5%' : '48%' }]}>
+          <View style={[styles.card, { width: !wide ? '100%' : desktop ? '23.5%' : '48%' }]}>
             <View style={[styles.iconBox, { backgroundColor: '#dbeafe' }]}>
               <MaterialCommunityIcons name="domain" size={24} color="#2563eb" />
             </View>
-            <Text style={styles.cardLabel}>Obras Ativas</Text>
-            <Text style={styles.cardValue}>{metricas.obrasAtivas}</Text>
+            <Text style={styles.cardLabel}>Obras cadastradas</Text>
+            <Text style={styles.cardValue}>{resumo.obrasCadastradas}</Text>
           </View>
 
-          <View style={[styles.card, { width: compact ? '100%' : desktop ? '23.5%' : '48%' }]}>
+          <View style={[styles.card, { width: !wide ? '100%' : desktop ? '23.5%' : '48%' }]}>
             <View style={[styles.iconBox, { backgroundColor: '#d1fae5' }]}>
               <MaterialCommunityIcons name="check-decagram" size={24} color="#059669" />
             </View>
-            <Text style={styles.cardLabel}>Tarefas OK</Text>
-            <Text style={styles.cardValue}>{metricas.tarefasConcluidas}</Text>
+            <Text style={styles.cardLabel}>Tarefas concluídas</Text>
+            <Text style={styles.cardValue}>{resumo.tarefasConcluidas}</Text>
           </View>
 
-          <View style={[styles.card, { width: compact ? '100%' : desktop ? '23.5%' : '48%' }]}>
+          <View style={[styles.card, { width: !wide ? '100%' : desktop ? '23.5%' : '48%' }]}>
             <View style={[styles.iconBox, { backgroundColor: '#ffedd5' }]}>
               <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#ea580c" />
             </View>
-            <Text style={styles.cardLabel}>Pendentes</Text>
-            <Text style={[styles.cardValue, { color: '#ea580c' }]}>{metricas.tarefasPendentes}</Text>
+            <Text style={styles.cardLabel}>Tarefas pendentes</Text>
+            <Text style={[styles.cardValue, { color: '#ea580c' }]}>{resumo.tarefasPendentes}</Text>
           </View>
 
-          <View style={[styles.card, { width: compact ? '100%' : desktop ? '23.5%' : '48%' }]}>
+          <View style={[styles.card, { width: !wide ? '100%' : desktop ? '23.5%' : '48%' }]}>
             <View style={[styles.iconBox, { backgroundColor: '#f3e8ff' }]}>
               <MaterialCommunityIcons name="currency-usd" size={24} color="#9333ea" />
             </View>
             <Text style={styles.cardLabel}>Custo Materiais</Text>
-            <Text style={styles.cardValue}>R$ {metricas.custoTotal}</Text>
+            <Text style={styles.cardValue}>{moeda.format(resumo.custoTotal)}</Text>
           </View>
         </View>
 
@@ -113,26 +138,35 @@ export default function Home() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Projetos Recentes</Text>
-            <TouchableOpacity onPress={() => router.navigate('/projetos')}>
+            <TouchableOpacity accessibilityRole="button" style={styles.linkButton} onPress={() => router.navigate('/projetos')}>
               <Text style={styles.linkText}>Ver todos</Text>
             </TouchableOpacity>
           </View>
 
-          {projetos.map((projeto) => (
-            <View key={projeto.id} style={styles.projectItem}>
+          {resumo.recentes.length === 0 && <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="folder-plus-outline" size={40} color="#71717a" />
+            <Text style={styles.sectionTitle}>Nenhuma obra cadastrada</Text>
+            <Text style={styles.subtitle}>Crie seu primeiro projeto para acompanhar o resumo aqui.</Text>
+            <TouchableOpacity accessibilityRole="button" style={styles.retryButton} onPress={() => router.navigate('/projetos')}>
+              <Text style={styles.btnText}>Criar projeto</Text>
+            </TouchableOpacity>
+          </View>}
+          {resumo.recentes.map((projeto) => (
+            <View key={projeto.id} style={[styles.projectItem, compact && styles.projectItemCompact]}>
               <View style={styles.projectInfo}>
                 <Text style={styles.projectName}>{projeto.titulo}</Text>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{projeto.status}</Text>
-                </View>
+                <Text style={styles.subtitle}>{Number.isFinite(Date.parse(projeto.criado_em))
+                  ? `Criado em ${new Date(projeto.criado_em).toLocaleDateString('pt-BR')}` : 'Data não informada'}</Text>
               </View>
-              <TouchableOpacity style={styles.openBtn}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Abrir ${projeto.titulo}`} style={styles.openBtn}
+                onPress={() => router.push({ pathname: '/projeto-detalhes', params: { id: projeto.id, titulo: projeto.titulo } })}>
                 <Text style={styles.openBtnText}>Abrir</Text>
                 <MaterialCommunityIcons name="arrow-right" size={16} color="#ea580c" />
               </TouchableOpacity>
             </View>
           ))}
         </View>
+        </>}
 
       </ScrollView>
     </View>
@@ -140,6 +174,11 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  feedback: { padding: 24, alignItems: 'center', gap: 16 },
+  retryButton: { minHeight: 48, padding: 16, borderRadius: 12, backgroundColor: '#18181b', alignItems: 'center', justifyContent: 'center' },
+  linkButton: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 },
+  emptyState: { paddingVertical: 16, gap: 12, alignItems: 'center' },
+  projectItemCompact: { flexDirection: 'column', alignItems: 'stretch' },
   container: {
     flex: 1,
     backgroundColor: '#fafafa', // Fundo de toda a tela
@@ -167,8 +206,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
     padding: 16,
-    paddingBottom: 60, // Esse espaço no final faz o ScrollView não travar!
+    paddingBottom: 40, // Esse espaço no final faz o ScrollView não travar!
   },
   greeting: {
     marginBottom: 24,
@@ -198,6 +240,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   btnText: {
+    flexShrink: 1,
+    textAlign: 'center',
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
@@ -227,8 +271,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardLabel: {
-    fontSize: 12,
-    color: '#71717a',
+    fontSize: 14,
+    color: '#52525b',
     fontWeight: '600',
   },
   cardValue: {
@@ -266,13 +310,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f4f4f5',
   },
   projectInfo: {
     minWidth: 0,
-    marginRight: 12,
     flex: 1,
   },
   projectName: {
@@ -281,19 +325,10 @@ const styles = StyleSheet.create({
     color: '#18181b',
     marginBottom: 4,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#d1fae5',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  badgeText: {
-    color: '#065f46',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
   openBtn: {
+    minHeight: 48,
+    paddingHorizontal: 12,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
