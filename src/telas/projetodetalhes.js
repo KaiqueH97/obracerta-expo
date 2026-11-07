@@ -1,520 +1,160 @@
-import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import useResponsiveLayout from '../hooks/useResponsiveLayout';
-import React, { useState, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Linking
-} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import useResponsiveLayout from '../hooks/useResponsiveLayout';
+import { criarRepositorioObra, resumoFinanceiro } from '../services/obra';
+import { criarRepositorioPerfil } from '../services/perfil';
+import Materiais from '../components/obra/Materiais';
+import Caixa from '../components/obra/Caixa';
+import Tarefas from '../components/obra/Tarefas';
+import { Botao, estilos, formatarMoeda } from '../components/obra/ui';
 
-const formatarMoeda = valor => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+const repositorio = criarRepositorioObra(AsyncStorage);
+const perfis = criarRepositorioPerfil(AsyncStorage);
+const abas = [['materiais', 'Orçamento'], ['transacoes', 'Caixa'], ['tarefas', 'Tarefas']];
 
 export default function ProjetoDetalhes() {
+  const { id } = useLocalSearchParams();
+  return <Detalhes key={String(id)} id={typeof id === 'string' ? id : ''} />;
+}
+
+function Detalhes({ id }) {
   const insets = useSafeAreaInsets();
-  const { compact } = useResponsiveLayout();
-  // Pega o ID e o Título passados pela tela de Projetos
-  const { id, titulo } = useLocalSearchParams();
-
-  const [abaAtiva, setAbaAtiva] = useState('materiais'); // materiais | caixa | tarefas
+  const { wide, desktop } = useResponsiveLayout();
+  const [dados, setDados] = useState(null);
+  const [perfil, setPerfil] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  const [erroCarga, setErroCarga] = useState(false);
-  const [adicaoManual, setAdicaoManual] = useState(false);
+  const [erro, setErro] = useState('');
+  const [mensagem, setMensagem] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const [aba, setAba] = useState('materiais');
+  const [cotacao, setCotacao] = useState('');
   const leitura = useRef(0);
+  const envio = useRef(false);
 
-  // Estados dos Dados
-  const [materiais, setMateriais] = useState([]);
-  const [tarefas, setTarefas] = useState([]);
-  const [transacoes, setTransacoes] = useState([]);
-
-  // Estados dos Formulários
-  const [novaTarefa, setNovaTarefa] = useState('');
-  const [nomeMaterial, setNomeMaterial] = useState('');
-  const [qtdMaterial, setQtdMaterial] = useState('');
-  const [custoMaterial, setCustoMaterial] = useState('');
-
-  const [tipoTransacao, setTipoTransacao] = useState('RECEBIMENTO');
-  const [descTransacao, setDescTransacao] = useState('');
-  const [valorTransacao, setValorTransacao] = useState('');
-
-  // Chaves dinâmicas para o AsyncStorage (separadas por projeto)
-  const keyMateriais = `@materiais_${id}`;
-  const keyTarefas = `@tarefas_${id}`;
-  const keyCaixa = `@caixa_${id}`;
-
-  const carregarDadosDaObra = useCallback(() => {
+  const carregar = useCallback(() => {
     const versao = ++leitura.current;
-    setCarregando(true);
-    setErroCarga(false);
-    Promise.all([
-      AsyncStorage.getItem(keyMateriais),
-      AsyncStorage.getItem(keyTarefas),
-      AsyncStorage.getItem(keyCaixa),
-    ]).then(dados => {
+    setCarregando(true); setErro(''); setCotacao(''); setMensagem('');
+    Promise.all([repositorio.carregar(id), perfis.carregar().catch(() => null)]).then(([obra, usuario]) => {
       if (versao !== leitura.current) return;
-      const listas = dados.map(json => json ? JSON.parse(json) : []);
-      if (listas.some(lista => !Array.isArray(lista))) throw new Error('Dados inválidos');
-      setMateriais(listas[0]);
-      setTarefas(listas[1]);
-      setTransacoes(listas[2]);
+      setDados(obra); setPerfil(usuario); setCarregando(false);
+    }).catch(error => {
+      if (versao !== leitura.current) return;
+      setErro(error instanceof Error && error.message.startsWith('Obra não encontrada')
+        ? error.message : 'Não foi possível carregar esta obra. Tente novamente.');
       setCarregando(false);
-    }).catch(() => {
-      if (versao === leitura.current) { setErroCarga(true); setCarregando(false); }
     });
-  }, [keyMateriais, keyTarefas, keyCaixa]);
+  }, [id]);
 
   useFocusEffect(useCallback(() => {
-    carregarDadosDaObra();
+    carregar();
     return () => { leitura.current++; };
-  }, [carregarDadosDaObra]));
+  }, [carregar]));
 
-  /* ================== MATERIAIS ================== */
-  const adicionarMaterial = async () => {
-    if (!nomeMaterial.trim() || !qtdMaterial.trim() || !custoMaterial.trim()) {
-      Alert.alert('Aviso', 'Preencha todos os campos do material.');
-      return;
-    }
-
-    const custo = Number(custoMaterial.trim().replace(',', '.'));
-    if (!nomeMaterial.trim() || !qtdMaterial.trim() || !Number.isFinite(custo) || custo < 0) {
-      Alert.alert('Aviso', 'Informe nome, quantidade e um custo válido, como 150,00.');
-      return;
-    }
-
-    const novoItem = {
-      id: Date.now().toString(),
-      nome: nomeMaterial.trim(),
-      quantidade: qtdMaterial.trim(),
-      preco_total: custo
-    };
-
-    const novaLista = [novoItem, ...materiais];
+  async function salvar(tipo, registros) {
+    if (envio.current || carregando || erro || !dados) return false;
+    envio.current = true; setOcupado(true); setMensagem('');
     try {
-      await AsyncStorage.setItem(keyMateriais, JSON.stringify(novaLista));
-      setMateriais(novaLista);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar os materiais. Tente novamente.');
-      return;
-    }
-
-    setNomeMaterial('');
-    setQtdMaterial('');
-    setCustoMaterial('');
-  };
-
-  const excluirMaterial = async (idMaterial) => {
-    const novaLista = materiais.filter(m => m.id !== idMaterial);
-    try {
-      await AsyncStorage.setItem(keyMateriais, JSON.stringify(novaLista));
-      setMateriais(novaLista);
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar os materiais. Tente novamente.');
-      return;
-    }
-  };
-
-  /* ================== TAREFAS ================== */
-  const adicionarTarefa = async () => {
-    if (!novaTarefa.trim()) return;
-
-    const novaTar = { id: Date.now().toString(), nome: novaTarefa, concluida: false };
-    const novaLista = [...tarefas, novaTar];
-
-    setTarefas(novaLista);
-    await AsyncStorage.setItem(keyTarefas, JSON.stringify(novaLista));
-    setNovaTarefa('');
-  };
-
-  const alternarConclusaoTarefa = async (idTarefa) => {
-    const novaLista = tarefas.map(t =>
-      t.id === idTarefa ? { ...t, concluida: !t.concluida } : t
-    );
-    setTarefas(novaLista);
-    await AsyncStorage.setItem(keyTarefas, JSON.stringify(novaLista));
-  };
-
-  /* ================== CAIXA ================== */
-  const registrarTransacao = async () => {
-    if (!descTransacao || !valorTransacao) {
-      Alert.alert('Aviso', 'Preencha a descrição e o valor.');
-      return;
-    }
-
-    const novaTrans = {
-      id: Date.now().toString(),
-      tipo: tipoTransacao,
-      descricao: descTransacao,
-      valor: parseFloat(valorTransacao.replace(',', '.'))
-    };
-
-    const novaLista = [novaTrans, ...transacoes];
-    setTransacoes(novaLista);
-    await AsyncStorage.setItem(keyCaixa, JSON.stringify(novaLista));
-
-    setDescTransacao('');
-    setValorTransacao('');
-  };
-
-  const excluirTransacao = async (idTransacao) => {
-    const novaLista = transacoes.filter(t => t.id !== idTransacao);
-    setTransacoes(novaLista);
-    await AsyncStorage.setItem(keyCaixa, JSON.stringify(novaLista));
-  };
-
-  /* ================== CÁLCULOS E WHATSAPP ================== */
-  const custoTotalMateriais = materiais.reduce((acc, item) => acc + (item.preco_total || 0), 0);
-  const totalRecebido = transacoes.filter(t => t.tipo === 'RECEBIMENTO').reduce((acc, item) => acc + item.valor, 0);
-  const totalSaidas = transacoes.filter(t => t.tipo === 'PAGAMENTO').reduce((acc, item) => acc + item.valor, 0);
-  const lucroAtual = totalRecebido - custoTotalMateriais - totalSaidas;
-
-  const solicitarOrcamentoWhatsApp = () => {
-    let texto = `*Obra Certa* 👷‍♂️\nRelatório de Materiais: *${titulo}*\n\n`;
-    materiais.forEach(m => { texto += `▪️ ${m.nome} - Qtd: ${m.quantidade}\n`; });
-    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(texto)}`);
-  };
-
-  if (carregando) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#ea580c" />
-      </View>
-    );
+      const atualizado = { ...dados, [tipo]: registros };
+      resumoFinanceiro(atualizado.materiais, atualizado.transacoes);
+      await repositorio.salvar(id, tipo, registros);
+      setDados(atualizado); setCotacao(''); setMensagem('Alterações salvas.');
+      return true;
+    } catch (error) {
+      setMensagem(error instanceof Error && error.message.includes('obra não está')
+        ? error.message : 'Não foi possível salvar. Os dados exibidos foram mantidos. Tente novamente.');
+      return false;
+    } finally { envio.current = false; setOcupado(false); }
   }
 
-  if (erroCarga) return <View style={styles.center}>
-    <Text style={styles.itemTitle}>Não foi possível carregar esta obra.</Text>
-    <TouchableOpacity accessibilityRole="button" style={styles.btnNovaMedicao} onPress={carregarDadosDaObra}>
-      <Text style={styles.btnNovaMedicaoText}>Tentar novamente</Text>
-    </TouchableOpacity>
-    <TouchableOpacity accessibilityRole="button" style={styles.manualButton} onPress={() => router.navigate('/projetos')}>
-      <Text style={styles.manualText}>Voltar aos projetos</Text>
-    </TouchableOpacity>
+  if (carregando || erro || !dados) return <View style={[styles.feedback, { paddingTop: insets.top + 24 }]}>
+    <Text style={estilos.titulo}>Detalhes da Obra</Text>
+    {carregando ? <ActivityIndicator size="large" color="#ea580c" /> : <>
+      <Text accessibilityRole="alert" style={estilos.texto}>{erro}</Text>
+      <Botao texto="Tentar novamente" onPress={carregar} />
+    </>}
+    <Botao texto="Voltar aos projetos" secundario onPress={() => router.navigate('/projetos')} />
   </View>;
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={{ width: '100%', maxWidth: 1100, alignSelf: 'center', paddingBottom: Math.max(insets.bottom, 16) }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+  const resumo = resumoFinanceiro(dados.materiais, dados.transacoes);
+  const indicadores = [
+    ['Entradas', resumo.entradas, '#047857'], ['Materiais', resumo.materiais, '#c2410c'],
+    ['Equipe', resumo.equipe, '#1d4ed8'], ['Lucro atual', resumo.lucro, resumo.lucro < 0 ? '#b91c1c' : '#047857'],
+  ];
+  function prepararCotacao() {
+    const texto = [`Obra Certa — Cotação de materiais`, `Obra: ${dados.projeto.titulo}`];
+    if (perfil?.nome) texto.push(`Profissional: ${perfil.nome}`);
+    if (perfil?.telefone) texto.push(`Contato: ${perfil.telefone}`);
+    texto.push('', ...dados.materiais.map(item => `• ${item.nome} — ${item.quantidade}`));
+    setCotacao(texto.join('\n'));
+  }
 
-      {/* HEADER DA OBRA */}
-      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <TouchableOpacity style={styles.btnVoltar} onPress={() => router.back()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#18181b" />
-        </TouchableOpacity>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.tituloObra} numberOfLines={1}>{titulo}</Text>
-          <Text style={styles.subTitulo}>Gestão completa do canteiro</Text>
-        </View>
+  return <ScrollView style={styles.container} contentContainerStyle={[styles.content, {
+    paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom, 24),
+    paddingLeft: Math.max(insets.left, 16), paddingRight: Math.max(insets.right, 16),
+  }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <View style={styles.header}>
+      <Botao texto="← Projetos" secundario disabled={ocupado} onPress={() => router.navigate('/projetos')} />
+      <View style={styles.headerText}>
+        <Text accessibilityRole="header" style={styles.title}>{dados.projeto.titulo}</Text>
+        <Text style={estilos.ajuda}>Gestão de materiais, tarefas e caixa.</Text>
       </View>
-
-      {/* DASHBOARD FINANCEIRO */}
-      <View style={[styles.dashGrid, compact && { flexDirection: 'column' }]}>
-        <View style={styles.dashCard}>
-          <Text style={styles.dashLabel}>Entradas</Text>
-          <Text style={styles.dashValuePos}>R$ {totalRecebido.toFixed(2)}</Text>
-        </View>
-        <View style={styles.dashCard}>
-          <Text style={styles.dashLabel}>Lucro Atual</Text>
-          <Text style={[styles.dashValue, lucroAtual < 0 && styles.dashValueNeg]}>
-            R$ {lucroAtual.toFixed(2)}
-          </Text>
-        </View>
-      </View>
-
-      {/* MENU DE ABAS */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabBtn, compact && { flexDirection: 'column' }, abaAtiva === 'materiais' && styles.tabAtiva]}
-          onPress={() => setAbaAtiva('materiais')}
-        >
-          <MaterialCommunityIcons name="cart-outline" size={20} color={abaAtiva === 'materiais' ? '#ea580c' : '#71717a'} />
-          <Text style={[styles.tabText, abaAtiva === 'materiais' && {color: '#ea580c'}]}>Orçamento</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tabBtn, compact && { flexDirection: 'column' }, abaAtiva === 'caixa' && styles.tabAtiva]}
-          onPress={() => setAbaAtiva('caixa')}
-        >
-          <MaterialCommunityIcons name="wallet-outline" size={20} color={abaAtiva === 'caixa' ? '#10b981' : '#71717a'} />
-          <Text style={[styles.tabText, abaAtiva === 'caixa' && {color: '#10b981'}]}>Caixa</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tabBtn, compact && { flexDirection: 'column' }, abaAtiva === 'tarefas' && styles.tabAtiva]}
-          onPress={() => setAbaAtiva('tarefas')}
-        >
-          <MaterialCommunityIcons name="checkbox-marked-outline" size={20} color={abaAtiva === 'tarefas' ? '#2563eb' : '#71717a'} />
-          <Text style={[styles.tabText, abaAtiva === 'tarefas' && {color: '#2563eb'}]}>Tarefas</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.scrollArea}>
-
-        {/* ================= CONTEÚDO: MATERIAIS ================= */}
-        {abaAtiva === 'materiais' && (
-          <View style={styles.sectionCard}>
-            <View style={styles.materialHeading}>
-              <MaterialCommunityIcons name="cart-outline" size={24} color="#ea580c" />
-              <Text accessibilityRole="header" style={styles.materialTitle}>Lista de Materiais</Text>
-              <Text style={styles.materialCount}>{materiais.length} {materiais.length === 1 ? 'material' : 'materiais'}</Text>
-            </View>
-
-            {materiais.length === 0 ? (
-              <View style={styles.materialEmpty}>
-                <MaterialCommunityIcons name="cart-outline" size={40} color="#a1a1aa" />
-                <Text style={styles.itemTitle}>Nenhum material adicionado.</Text>
-                <Text style={styles.materialHelp}>Use Nova Medição para calcular e adicionar materiais a esta obra.</Text>
-              </View>
-            ) : (
-              materiais.map(item => (
-                <View key={item.id} style={styles.materialItem}>
-                  <View style={styles.materialRow}>
-                    <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
-                      <Text style={styles.itemTitle}>{item.nome}</Text>
-                      <View style={styles.quantityBadge}><Text style={styles.quantityText}>{item.quantidade}</Text></View>
-                    </View>
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Excluir ${item.nome}`} style={styles.materialDelete} onPress={() => excluirMaterial(item.id)}>
-                      <MaterialCommunityIcons name="trash-can-outline" size={24} color="#ef4444" />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.materialCost}>
-                    <Text style={styles.materialHelp}>Custo registrado</Text>
-                    <Text style={styles.materialPrice}>{formatarMoeda(item.preco_total)}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-
-            <View style={styles.materialTotal}>
-              <Text style={styles.itemTitle}>Total dos materiais</Text>
-              <Text style={styles.materialPrice}>{formatarMoeda(custoTotalMateriais)}</Text>
-            </View>
-            <TouchableOpacity accessibilityRole="button" style={styles.btnNovaMedicao}
-              onPress={() => router.push({ pathname: '/nova-medicao', params: { projetoId: String(id) } })}>
-              <MaterialCommunityIcons name="calculator" size={24} color="#9a3412" />
-              <Text style={styles.btnNovaMedicaoText}>Nova Medição</Text>
-            </TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: adicaoManual }} style={styles.manualButton} onPress={() => setAdicaoManual(valor => !valor)}>
-              <Text style={styles.manualText}>{adicaoManual ? 'Fechar cadastro manual' : 'Adicionar material manualmente'}</Text>
-            </TouchableOpacity>
-            {adicaoManual && <View>
-              <View style={[styles.formRow, compact && { flexDirection: 'column' }]}>
-                <TextInput style={[styles.input, {flex: 2}]} placeholder="Material (Ex: Cimento)" value={nomeMaterial} onChangeText={setNomeMaterial} />
-                <TextInput style={[styles.input, {flex: 1}]} placeholder="Qtd" value={qtdMaterial} onChangeText={setQtdMaterial} />
-              </View>
-              <View style={[styles.formRow, compact && { flexDirection: 'column' }]}>
-                <TextInput style={[styles.input, {flex: 1}]} placeholder="Custo Total (Ex: 150.00)" keyboardType="numeric" value={custoMaterial} onChangeText={setCustoMaterial} />
-                <TouchableOpacity style={styles.btnAddMaterial} onPress={adicionarMaterial}>
-                  <Text style={styles.btnAddText}>Adicionar</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.divisor} />
-
-            </View>}
-
-            {materiais.length > 0 && (
-              <TouchableOpacity style={styles.btnWhatsApp} onPress={solicitarOrcamentoWhatsApp}>
-                <MaterialCommunityIcons name="whatsapp" size={20} color="#fff" />
-                <Text style={styles.btnWhatsAppText}>Enviar Relatório (WhatsApp)</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {/* ================= CONTEÚDO: CAIXA ================= */}
-        {abaAtiva === 'caixa' && (
-          <View style={styles.sectionCard}>
-            <View style={styles.toggleRow}>
-              <TouchableOpacity
-                style={[styles.toggleBtn, tipoTransacao === 'RECEBIMENTO' && styles.toggleBtnActiveReceb]}
-                onPress={() => setTipoTransacao('RECEBIMENTO')}
-              >
-                <Text style={[styles.toggleText, tipoTransacao === 'RECEBIMENTO' && {color: '#fff'}]}>Entrada</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleBtn, tipoTransacao === 'PAGAMENTO' && styles.toggleBtnActivePag]}
-                onPress={() => setTipoTransacao('PAGAMENTO')}
-              >
-                <Text style={[styles.toggleText, tipoTransacao === 'PAGAMENTO' && {color: '#fff'}]}>Saída</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.formRow, compact && { flexDirection: 'column' }]}>
-              <TextInput style={[styles.input, {flex: 2}]} placeholder="Descrição" value={descTransacao} onChangeText={setDescTransacao} />
-              <TextInput style={[styles.input, {flex: 1}]} placeholder="R$" keyboardType="numeric" value={valorTransacao} onChangeText={setValorTransacao} />
-            </View>
-            <TouchableOpacity style={styles.btnAddCaixa} onPress={registrarTransacao}>
-              <Text style={styles.btnAddText}>Lançar no Caixa</Text>
-            </TouchableOpacity>
-
-            <View style={styles.divisor} />
-
-            {transacoes.length === 0 ? (
-              <Text style={styles.emptyText}>Nenhuma movimentação.</Text>
-            ) : (
-              transacoes.map(t => (
-                <View key={t.id} style={styles.listItem}>
-                  <MaterialCommunityIcons
-                    name={t.tipo === 'RECEBIMENTO' ? 'trending-up' : 'trending-down'}
-                    size={24}
-                    color={t.tipo === 'RECEBIMENTO' ? '#10b981' : '#ef4444'}
-                  />
-                  <View style={{flex: 1, marginLeft: 12}}>
-                    <Text style={styles.itemTitle}>{t.descricao}</Text>
-                    <Text style={[styles.itemSub, {fontWeight: 'bold', color: t.tipo === 'RECEBIMENTO' ? '#10b981' : '#ef4444'}]}>
-                      {t.tipo === 'RECEBIMENTO' ? '+' : '-'} R$ {t.valor.toFixed(2)}
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={() => excluirTransacao(t.id)}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={24} color="#a1a1aa" />
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-        )}
-
-        {/* ================= CONTEÚDO: TAREFAS ================= */}
-        {abaAtiva === 'tarefas' && (
-          <View style={styles.sectionCard}>
-            <View style={[styles.formRow, compact && { flexDirection: 'column' }]}>
-              <TextInput
-                style={[styles.input, {flex: 1}]}
-                placeholder="O que precisa ser feito?"
-                value={novaTarefa}
-                onChangeText={setNovaTarefa}
-              />
-              <TouchableOpacity style={styles.btnAddTarefa} onPress={adicionarTarefa}>
-                <MaterialCommunityIcons name="plus" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.divisor} />
-
-            {tarefas.length === 0 ? (
-              <Text style={styles.emptyText}>Sua lista está vazia.</Text>
-            ) : (
-              tarefas.map(t => (
-                <TouchableOpacity
-                  key={t.id}
-                  style={[styles.taskItem, t.concluida && styles.taskItemConcluida]}
-                  onPress={() => alternarConclusaoTarefa(t.id)}
-                >
-                  <View style={[styles.checkbox, t.concluida && styles.checkboxConcluida]}>
-                    {t.concluida && <MaterialCommunityIcons name="check" size={16} color="#fff" />}
-                  </View>
-                  <Text style={[styles.taskText, t.concluida && styles.taskTextConcluida]}>
-                    {t.nome}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        )}
-
-      </View>
-    </ScrollView>
-  );
+    </View>
+    <View style={styles.indicadores}>
+      {indicadores.map(([titulo, valor, cor]) => <View key={titulo} style={[styles.indicador, { width: desktop ? '23.5%' : wide ? '48%' : '100%' }]}>
+        <Text style={estilos.label}>{titulo}</Text>
+        <Text style={[styles.valor, { color: String(cor) }]}>{formatarMoeda(valor)}</Text>
+      </View>)}
+    </View>
+    <Text style={estilos.ajuda}>Lucro atual = entradas − materiais − pagamentos da equipe.</Text>
+    {dados.transacoes.some(item => item.tipo === 'PAGAMENTO') && <Text style={estilos.ajuda}>Pagamentos anteriores sem profissional vinculado também estão incluídos no total da Equipe.</Text>}
+    {!!mensagem && <Text accessibilityLiveRegion="polite" style={estilos.aviso}>{mensagem}</Text>}
+    {!!dados.materiais.length && <View style={estilos.painel}>
+      <Botao texto="Preparar cotação completa" secundario disabled={ocupado} onPress={prepararCotacao} />
+      {!!cotacao && <>
+        <Text style={estilos.ajuda}>{dados.materiais.length} {dados.materiais.length === 1 ? 'material na cotação.' : 'materiais na cotação.'}</Text>
+        <Text selectable style={estilos.texto}>{cotacao}</Text>
+        <Botao texto="Abrir cotação no WhatsApp" disabled={ocupado} onPress={() => {
+          Linking.openURL(`https://wa.me/?text=${encodeURIComponent(cotacao)}`).catch(() => setMensagem('Não foi possível abrir o WhatsApp. Você pode copiar a cotação acima.'));
+        }} />
+      </>}
+    </View>}
+    {!desktop && <View style={styles.abas}>
+      {abas.map(([chave, titulo]) => <View style={styles.aba} key={chave}>
+        <Botao texto={titulo} secundario={aba !== chave} disabled={ocupado} onPress={() => setAba(chave)} />
+      </View>)}
+    </View>}
+    <View style={[styles.paineis, desktop && { flexDirection: 'row', alignItems: 'flex-start' }]}>
+      {(desktop || aba === 'materiais') && <View style={[styles.coluna, desktop && { flex: 1 }]}>
+        <Materiais id={id} materiais={dados.materiais} salvar={salvar} ocupado={ocupado} />
+      </View>}
+      {(desktop || aba === 'transacoes') && <View style={[styles.coluna, desktop && { flex: 1 }]}>
+        <Caixa transacoes={dados.transacoes} equipe={dados.equipe} salvar={salvar} ocupado={ocupado} />
+      </View>}
+      {(desktop || aba === 'tarefas') && <View style={[styles.coluna, desktop && { flex: 1 }]}>
+        <Tarefas tarefas={dados.tarefas} salvar={salvar} ocupado={ocupado} />
+      </View>}
+    </View>
+    <View style={styles.rodape}><MaterialCommunityIcons name="hard-hat" size={20} color="#ea580c" /><Text style={estilos.ajuda}>Obra Certa</Text></View>
+  </ScrollView>;
 }
 
 const styles = StyleSheet.create({
-  materialHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingBottom: 16, borderBottomWidth: 1, borderColor: '#e4e4e7' },
-  materialTitle: { fontSize: 20, fontWeight: 'bold', color: '#18181b', flexShrink: 1 },
-  materialCount: { color: '#71717a', fontSize: 14 },
-  materialEmpty: { alignItems: 'center', paddingVertical: 24, gap: 12 },
-  materialHelp: { fontSize: 14, color: '#52525b', flexShrink: 1 },
-  materialItem: { paddingVertical: 16, gap: 12, borderBottomWidth: 1, borderColor: '#e4e4e7' },
-  materialRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  materialDelete: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  quantityBadge: { alignSelf: 'flex-start', backgroundColor: '#ffedd5', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-  quantityText: { color: '#9a3412', fontWeight: 'bold', fontSize: 13 },
-  materialCost: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', backgroundColor: '#fafafa', padding: 12, borderRadius: 10 },
-  materialPrice: { color: '#047857', fontWeight: 'bold', fontSize: 18, flexShrink: 1 },
-  materialTotal: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', paddingVertical: 20 },
-  btnNovaMedicao: { minHeight: 48, backgroundColor: '#ffedd5', borderRadius: 12, padding: 16, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
-  btnNovaMedicaoText: { color: '#9a3412', fontWeight: 'bold', fontSize: 16, flexShrink: 1, textAlign: 'center' },
-  manualButton: { minHeight: 48, padding: 12, justifyContent: 'center', alignItems: 'center' },
-  manualText: { color: '#52525b', fontWeight: 'bold', textAlign: 'center' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   container: { flex: 1, backgroundColor: '#f4f4f5' },
-
-  header: {
-    backgroundColor: '#fff', padding: 20, paddingTop: 20,
-    flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: '#e4e4e7'
-  },
-  btnVoltar: {
-    width: 40, height: 40, backgroundColor: '#f4f4f5', borderRadius: 12,
-    justifyContent: 'center', alignItems: 'center', marginRight: 12
-  },
-  headerTextContainer: { minWidth: 0, flex: 1 },
-  tituloObra: { fontSize: 22, fontWeight: '900', color: '#18181b' },
-  subTitulo: { fontSize: 13, color: '#71717a' },
-
-  dashGrid: { flexDirection: 'row', padding: 16, gap: 12 },
-  dashCard: {
-    flex: 1, backgroundColor: '#fff', padding: 16, borderRadius: 16,
-    borderWidth: 1, borderColor: '#e4e4e7', elevation: 1
-  },
-  dashLabel: { fontSize: 12, fontWeight: 'bold', color: '#71717a', textTransform: 'uppercase' },
-  dashValuePos: { fontSize: 20, fontWeight: '900', color: '#10b981', marginTop: 4 },
-  dashValue: { fontSize: 20, fontWeight: '900', color: '#18181b', marginTop: 4 },
-  dashValueNeg: { color: '#ef4444' },
-
-  tabContainer: {
-    flexDirection: 'row', marginHorizontal: 16, backgroundColor: '#e4e4e7',
-    borderRadius: 12, padding: 4, marginBottom: 8
-  },
-  tabBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 10, borderRadius: 8, gap: 6
-  },
-  tabAtiva: { backgroundColor: '#fff', elevation: 1 },
-  tabText: { fontWeight: 'bold', fontSize: 12 },
-
-  scrollArea: { padding: 16, paddingBottom: 60 },
-  sectionCard: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: '#e4e4e7'
-  },
-
-  formRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  input: {
-    minWidth: 0,
-    backgroundColor: '#f4f4f5', borderRadius: 8, paddingHorizontal: 12,
-    height: 48, borderWidth: 1, borderColor: '#d4d4d8', color: '#18181b'
-  },
-  btnAddMaterial: { minHeight: 48, flex: 1, backgroundColor: '#ea580c', borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  btnAddCaixa: { backgroundColor: '#10b981', height: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  btnAddTarefa: { backgroundColor: '#2563eb', width: 48, height: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  btnAddText: { color: '#fff', fontWeight: 'bold' },
-
-  toggleRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  toggleBtn: { flex: 1, height: 40, borderRadius: 8, backgroundColor: '#f4f4f5', justifyContent: 'center', alignItems: 'center' },
-  toggleBtnActiveReceb: { backgroundColor: '#10b981' },
-  toggleBtnActivePag: { backgroundColor: '#ef4444' },
-  toggleText: { fontWeight: 'bold', color: '#71717a' },
-
-  divisor: { height: 1, backgroundColor: '#e4e4e7', marginVertical: 12 },
-  emptyText: { textAlign: 'center', color: '#a1a1aa', marginVertical: 20 },
-
-  listItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderColor: '#f4f4f5' },
-  itemTitle: { fontSize: 16, fontWeight: 'bold', color: '#18181b' },
-  itemSub: { fontSize: 13, color: '#71717a', marginTop: 2 },
-
-  btnWhatsApp: { flexDirection: 'row', backgroundColor: '#25D366', padding: 14, borderRadius: 12, justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 16 },
-  btnWhatsAppText: { flexShrink: 1, color: '#fff', fontWeight: 'bold', fontSize: 16 },
-
-  taskItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#e4e4e7', marginBottom: 8 },
-  taskItemConcluida: { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' },
-  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#d4d4d8', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  checkboxConcluida: { backgroundColor: '#10b981', borderColor: '#10b981' },
-  taskText: { fontSize: 16, color: '#18181b', flex: 1 },
-  taskTextConcluida: { color: '#059669', textDecorationLine: 'line-through' }
+  content: { width: '100%', maxWidth: 1440, alignSelf: 'center', gap: 16 },
+  feedback: { flex: 1, justifyContent: 'center', padding: 24, gap: 20, backgroundColor: '#fafafa' },
+  header: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 16, backgroundColor: '#fff', borderRadius: 16, padding: 16 },
+  headerText: { flexGrow: 1, flexShrink: 1, gap: 6 },
+  title: { color: '#18181b', fontSize: 26, fontWeight: '900' },
+  indicadores: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  indicador: { backgroundColor: '#fff', borderRadius: 12, padding: 16, gap: 10, borderWidth: 1, borderColor: '#e4e4e7' },
+  valor: { fontSize: 22, fontWeight: '900' },
+  abas: { flexDirection: 'row', gap: 8 },
+  aba: { flex: 1, minWidth: 0 },
+  paineis: { gap: 16 },
+  coluna: { minWidth: 0, width: '100%' },
+  rodape: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 16 },
 });
