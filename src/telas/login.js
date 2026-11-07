@@ -79,7 +79,7 @@ export default function Login() {
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <TouchableOpacity onPress={() => mostrarAlerta('Em breve', 'Tela de recuperação em construção')}>
+            <TouchableOpacity accessibilityRole="button" disabled={carregando} onPress={() => router.push('/recuperar')}>
               <Text style={styles.linkText}>Esqueceu sua senha?</Text>
             </TouchableOpacity>
             

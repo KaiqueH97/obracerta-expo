@@ -63,6 +63,32 @@ com login demonstrativo, sem autenticação ou sincronização com Supabase.
    com o primeiro e-mail: as informações salvas devem continuar disponíveis.
 10. Confira se os registros de equipe e projetos permanecem após sair e entrar.
 
+## Etapa 3 — Recuperar senha
+
+- Rota `/recuperar`, acessível por “Esqueceu sua senha?” no login.
+- Formulário com teclado de e-mail, validação de campo vazio e formato inválido.
+- Confirmação da simulação com o e-mail normalizado, opção de usar outro e-mail
+  e retorno ao login.
+- Layout em JavaScript com React Native, reaproveitando o AuthLayout e suas
+  áreas seguras e adaptação ao teclado.
+
+Esta etapa é demonstrativa, como o login atual: não envia e-mail, não consulta
+cadastros e não altera a senha ou os dados locais. A interface informa isso antes
+e depois da simulação. A tela original usa Supabase para solicitar o link;
+o envio real exige integrar autenticação e o retorno do link ao aplicativo.
+
+### Como conferir a recuperação no celular
+
+1. No login, toque em “Esqueceu sua senha?”: deve abrir a tela Recuperar senha.
+2. Envie o campo vazio, `nome` ou `nome@`: deve aparecer um erro de validação.
+3. Digite um e-mail válido com espaços nas pontas: a confirmação deve exibir
+   o endereço sem espaços e em letras minúsculas.
+4. Confira o aviso de simulação e a informação de que nenhum e-mail foi enviado.
+5. Toque em “Usar outro e-mail” e confira se consegue editar e simular novamente.
+6. Use “Voltar ao login” e confira também o botão Voltar do Android.
+7. Confira o formulário com o teclado aberto e com tamanho de fonte ampliado.
+8. Confira se o login e os dados de perfil, equipe e projetos continuam funcionando.
+
 ## Verificações automatizadas
 
 ```sh
@@ -77,8 +103,7 @@ A validação em um aparelho físico deve ser feita pelos roteiros acima.
 
 ## Próximas etapas, com commits separados
 
-1. Recuperar senha.
-2. Redefinir senha.
+1. Redefinir senha.
 
 As telas de senha exigem definir uma autenticação real para enviar e validar links
 por e-mail; o login demonstrativo atual não oferece esse serviço.
