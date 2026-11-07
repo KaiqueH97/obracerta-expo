@@ -152,7 +152,12 @@ export default function Perfil() {
         <Text style={styles.email} selectable>{perfil.email}</Text>
         <Text style={styles.hint}>O e-mail é o utilizado no login e não pode ser alterado por aqui.</Text>
         <Text style={styles.label}>Senha de acesso</Text>
-        <Text style={styles.subtitle}>A tela de redefinição de senha será disponibilizada na próxima etapa.</Text>
+        <Text style={styles.subtitle}>Teste o fluxo de redefinição no modo demonstrativo. Sua senha não será alterada.</Text>
+        <TouchableOpacity accessibilityRole="button" disabled={!!ocupado || editando}
+          style={[styles.secondaryButton, (!!ocupado || editando) && styles.disabled]}
+          onPress={() => router.push('/redefinir-senha')}>
+          <Text style={styles.secondaryText}>Testar redefinição de senha</Text>
+        </TouchableOpacity>
       </View>
       <Text style={styles.hint}>Suas informações são salvas neste aparelho. O login atual é demonstrativo.</Text>
       <TouchableOpacity accessibilityRole="button" disabled={!!ocupado} onPress={sair}

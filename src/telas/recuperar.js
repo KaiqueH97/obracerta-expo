@@ -38,6 +38,9 @@ export default function RecuperarSenha() {
         <Text style={styles.text}>E-mail informado:</Text>
         <Text style={styles.email} selectable>{emailConfirmado}</Text>
         <Text style={styles.text}>Nenhum e-mail foi enviado e sua senha não foi alterada. Com a autenticação integrada, este passo solicitará o link para redefinir sua senha.</Text>
+        <TouchableOpacity accessibilityRole="button" style={styles.button} onPress={() => router.push('/redefinir-senha')}>
+          <Text style={styles.buttonText}>Testar redefinição de senha</Text>
+        </TouchableOpacity>
         <TouchableOpacity accessibilityRole="button" style={styles.secondaryButton} onPress={() => {
           setEmailConfirmado(''); setErro('');
         }}><Text style={styles.secondaryText}>Usar outro e-mail</Text></TouchableOpacity>

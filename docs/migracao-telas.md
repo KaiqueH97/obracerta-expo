@@ -43,7 +43,7 @@ Os dados anteriores do MMKV não são transferidos automaticamente.
 - Falhas de leitura bloqueiam a edição e oferecem nova tentativa.
 - Falhas de gravação mantêm o formulário aberto para tentar novamente.
 - Sair remove `@usuario_email` e retorna ao login, preservando os dados locais.
-- A seção de senha informa que a redefinição será implementada na próxima etapa.
+- A seção de senha permite abrir a redefinição demonstrativa (etapa 4).
 
 A separação dos perfis por e-mail organiza os dados locais. O aplicativo continua
 com login demonstrativo, sem autenticação ou sincronização com Supabase.
@@ -89,6 +89,36 @@ o envio real exige integrar autenticação e o retorno do link ao aplicativo.
 7. Confira o formulário com o teclado aberto e com tamanho de fonte ampliado.
 8. Confira se o login e os dados de perfil, equipe e projetos continuam funcionando.
 
+## Etapa 4 — Redefinir senha
+
+- Rota `/redefinir-senha`, acessível após simular a recuperação e pela seção
+  Segurança de Acesso do Perfil.
+- Campos de nova senha e confirmação, com opção de mostrar ou ocultar.
+- Validação de mínimo de 6 caracteres (como no site), rejeição de senha composta
+  apenas por espaços e comparação exata com a confirmação.
+- Confirmação da simulação e limpeza dos dois campos após validação.
+- Retorno à recuperação ou ao login; layout reaproveita o AuthLayout.
+
+A tela é demonstrativa: não verifica links de recuperação, não grava senhas,
+não altera o cadastro e não chama o Supabase. As senhas digitadas ficam apenas
+no estado temporário da tela, sem serem enviadas em parâmetros de navegação.
+
+### Como conferir a redefinição no celular
+
+1. Pelo login, abra Recuperar senha e simule com um e-mail válido.
+2. Na confirmação, toque em “Testar redefinição de senha”.
+3. Tente enviar os campos vazios, uma senha com menos de 6 caracteres ou apenas
+   espaços: deve aparecer uma mensagem de validação.
+4. Informe senhas diferentes: deve pedir para conferir a confirmação.
+5. Confira o botão Mostrar/Ocultar senhas e a navegação entre campos pelo teclado.
+6. Informe a mesma senha fictícia com pelo menos 6 caracteres nos dois campos:
+   deve confirmar a simulação, sem alterar a senha de acesso.
+7. Toque em “Simular novamente”: os campos devem estar vazios e ocultos.
+8. Confira os retornos à recuperação, ao login e o botão Voltar do Android.
+9. Entre no app e abra Perfil > Testar redefinição de senha. Confira que o botão
+   fica desabilitado enquanto os dados pessoais estão em edição.
+10. Confira o formulário com teclado aberto e fonte ampliada.
+
 ## Verificações automatizadas
 
 ```sh
@@ -101,9 +131,11 @@ npx expo export --platform android --platform ios
 O typecheck verifica JavaScript com `checkJs`; não converte o código para TypeScript.
 A validação em um aparelho físico deve ser feita pelos roteiros acima.
 
-## Próximas etapas, com commits separados
+## Situação da migração
 
-1. Redefinir senha.
+As quatro telas foram adaptadas para JavaScript e React Native: Equipe, Perfil,
+Recuperar senha e Redefinir senha. Os roteiros acima permitem conferir no Expo Go.
 
-As telas de senha exigem definir uma autenticação real para enviar e validar links
-por e-mail; o login demonstrativo atual não oferece esse serviço.
+Equipe e Perfil persistem dados locais. Login, recuperação e redefinição continuam
+demonstrativos. Para autenticação real, será necessário integrar um serviço como
+Supabase, envio de e-mails e validação do link de recuperação no aplicativo.
