@@ -57,8 +57,8 @@ solicitação de autenticação, entre com a mesma conta nos dois lugares.
 No terminal, entre na pasta em que deseja guardar o projeto e execute:
 
 ```sh
-git clone https://github.com/KaiqueH97/obracerta-mmkv.git
-cd obracerta-mmkv
+git clone https://github.com/KaiqueH97/obracerta-expo.git
+cd obracerta-expo
 ```
 
 Se o repositório solicitar autenticação, use uma conta com acesso a ele.
@@ -68,7 +68,7 @@ terminal dentro da pasta extraída.
 **Se o projeto já está neste computador**, não precisa clonar outra vez. Por exemplo:
 
 ```sh
-cd /home/kaique/obracerta-mmkv
+cd /home/kaique/obracerta-expo
 ```
 
 Esse caminho é específico da máquina de desenvolvimento; em outro computador,
@@ -108,8 +108,6 @@ de verificação estão nas dependências de desenvolvimento.
 | `@expo/ngrok` | Túnel de desenvolvimento para conectar o Expo Go pela internet |
 | `eslint`, `eslint-config-expo`, `typescript` | Verificações de código; TypeScript é ferramenta de análise dos arquivos JavaScript |
 
-Apesar do nome do repositório conter `mmkv`, o armazenamento atual utiliza
-**AsyncStorage**, compatível com Expo Go. O MMKV foi removido das dependências.
 
 ## 5. Entrar na conta da Expo, quando necessário
 
