@@ -285,6 +285,7 @@ tests/                Testes automatizados
 docs/                 Guias de funcionalidades e validação
 ```
 
+- [Entrega frontend pelo Expo Snack](docs/snack.md)
 - [Conexão e diagnóstico do Expo Go](docs/expo-go.md)
 - [Migração das telas](docs/migracao-telas.md)
 - [Home com dados locais](docs/home.md)
